@@ -27,7 +27,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     amount: '',
     description: '',
     category: '',
-    entity: '',
+    entity: 'none',
     account: '',
     toAccount: '',
     date: new Date().toISOString().split('T')[0],
@@ -44,7 +44,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         amount: transaction.amount.toString(),
         description: transaction.description,
         category: transaction.category,
-        entity: transaction.entity || '',
+        entity: transaction.entity || 'none',
         account: transaction.account,
         toAccount: '',
         date: transaction.date,
@@ -113,7 +113,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       amount: parseFloat(formData.amount),
       description: formData.description,
       category: formData.category,
-      entity: formData.entity || undefined,
+      entity: formData.entity === 'none' ? undefined : formData.entity,
       account: formData.account,
       date: formData.date,
       tags: formData.tags,
@@ -233,7 +233,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   <SelectValue placeholder="Selecione uma entidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {entities.map((entity) => (
                     <SelectItem key={entity.id} value={entity.name}>
                       {entity.name} ({entity.type})
