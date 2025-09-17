@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, PiggyBank, Target, TrendingUp, Calendar } from 'lucide-react';
+import { Plus, Edit, Trash2, PiggyBank, Target, TrendingUp, Calendar, AlertCircle, Save, X, Zap } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -7,6 +7,13 @@ import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Progress } from '../ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Textarea } from '../ui/textarea';
+import { Switch } from '../ui/switch';
+import { Separator } from '../ui/separator';
+import { Alert, AlertDescription } from '../ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import { formatDatePT } from '../../utils/dateUtils';
 import type { SavingsGoal } from '../../contexts/FinanceContext';
 
@@ -15,112 +22,450 @@ const SavingsForm: React.FC<{
   onClose: () => void;
   onSave: (goal: any) => void;
 }> = ({ goal, onClose, onSave }) => {
+  const { accounts, categories } = useFinance();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: goal?.name || '',
     targetAmount: goal?.targetAmount?.toString() || '',
     currentAmount: goal?.currentAmount?.toString() || '0',
-    targetDate: goal?.targetDate || '',
+    targetDate: goal?.targetDate || new Date().toISOString().split('T')[0],
+    category: goal?.category || '',
+    priority: goal?.priority || 'medium',
+    // Auto contributions
+    autoContributions: {
+      enabled: goal?.autoContributions?.enabled || false,
+      amount: goal?.autoContributions?.amount?.toString() || '',
+      frequency: goal?.autoContributions?.frequency || 'monthly',
+      accountId: goal?.autoContributions?.accountId || '',
+      conditions: goal?.autoContributions?.conditions || []
+    },
+    notes: goal?.notes || ''
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [newCondition, setNewCondition] = useState<{
+    type: 'transaction_match' | 'surplus_detection' | 'scheduled';
+    pattern: string;
+    percentage: number;
+  }>({
+    type: 'transaction_match',
+    pattern: '',
+    percentage: 10
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
-    if (!formData.targetAmount || isNaN(parseFloat(formData.targetAmount))) newErrors.targetAmount = 'Valor objetivo deve ser um número válido';
-    if (!formData.currentAmount || isNaN(parseFloat(formData.currentAmount))) newErrors.currentAmount = 'Valor atual deve ser um número válido';
-    if (!formData.targetDate) newErrors.targetDate = 'Data objetivo é obrigatória';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    onSave({
-      name: formData.name,
+    const goalData = {
+      ...formData,
       targetAmount: parseFloat(formData.targetAmount),
       currentAmount: parseFloat(formData.currentAmount),
-      targetDate: formData.targetDate,
-    });
+      autoContributions: {
+        ...formData.autoContributions,
+        amount: formData.autoContributions.amount ? parseFloat(formData.autoContributions.amount) : undefined,
+      }
+    };
+
+    onSave(goalData);
+  };
+
+  const addCondition = () => {
+    if (newCondition.pattern || newCondition.type !== 'transaction_match') {
+      setFormData(prev => ({
+        ...prev,
+        autoContributions: {
+          ...prev.autoContributions,
+          conditions: [...prev.autoContributions.conditions, { ...newCondition }]
+        }
+      }));
+      setNewCondition({ type: 'transaction_match', pattern: '', percentage: 10 });
+      toast({
+        title: "Condição adicionada",
+        description: "Nova condição para reforço automático configurada.",
+      });
+    }
+  };
+
+  const removeCondition = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      autoContributions: {
+        ...prev.autoContributions,
+        conditions: prev.autoContributions.conditions.filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'text-red-600';
+      case 'medium': return 'text-yellow-600';
+      case 'low': return 'text-green-600';
+      default: return 'text-muted-foreground';
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md bg-gradient-card">
-        <CardHeader>
-          <CardTitle>{goal ? 'Editar Meta de Poupança' : 'Nova Meta de Poupança'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome da Meta</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className={errors.name ? 'border-red-500' : ''}
-                placeholder="Ex: Viagem de férias, Carro novo..."
-              />
-              {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PiggyBank className="h-5 w-5" />
+            {goal ? 'Editar Meta' : 'Nova Meta de Poupança'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Informações Básicas
+            </h3>
+            
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome da Meta</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Férias de Verão, Carro Novo"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria (opcional)</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma</SelectItem>
+                    {categories.filter(c => c.isActive).map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: category.color }}
+                          />
+                          {category.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="targetAmount">Valor Objetivo (€)</Label>
+                <Input
+                  id="targetAmount"
+                  type="number"
+                  step="0.01"
+                  value={formData.targetAmount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, targetAmount: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="targetDate">Data Objetivo</Label>
+                <Input
+                  id="targetDate"
+                  type="date"
+                  value={formData.targetDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="currentAmount">Valor Atual (€)</Label>
+                <Input
+                  id="currentAmount"
+                  type="number"
+                  step="0.01"
+                  value={formData.currentAmount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, currentAmount: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="priority">Prioridade</Label>
+                <Select 
+                  value={formData.priority} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as 'low' | 'medium' | 'high' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">
+                      <span className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        Baixa
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <span className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                        Média
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="high">
+                      <span className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full" />
+                        Alta
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="targetAmount">Valor Objetivo (€)</Label>
-              <Input
-                id="targetAmount"
-                type="number"
-                step="0.01"
-                value={formData.targetAmount}
-                onChange={(e) => setFormData(prev => ({ ...prev, targetAmount: e.target.value }))}
-                className={errors.targetAmount ? 'border-red-500' : ''}
+              <Label htmlFor="notes">Notas (opcional)</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Descrição adicional da meta, motivações, etc..."
+                rows={3}
               />
-              {errors.targetAmount && <p className="text-sm text-red-500">{errors.targetAmount}</p>}
+            </div>
+          </div>
+
+          {/* Auto Contributions */}
+          <Separator />
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Reforços Automáticos
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure contribuições automáticas baseadas em condições inteligentes
+                </p>
+              </div>
+              <Switch
+                checked={formData.autoContributions.enabled}
+                onCheckedChange={(enabled) => 
+                  setFormData(prev => ({
+                    ...prev,
+                    autoContributions: { ...prev.autoContributions, enabled }
+                  }))
+                }
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="currentAmount">Valor Atual (€)</Label>
-              <Input
-                id="currentAmount"
-                type="number"
-                step="0.01"
-                value={formData.currentAmount}
-                onChange={(e) => setFormData(prev => ({ ...prev, currentAmount: e.target.value }))}
-                className={errors.currentAmount ? 'border-red-500' : ''}
-              />
-              {errors.currentAmount && <p className="text-sm text-red-500">{errors.currentAmount}</p>}
-            </div>
+            {formData.autoContributions.enabled && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Os reforços automáticos usam IA para identificar padrões nas suas transações
+                    e contribuir automaticamente para esta meta quando as condições são atendidas.
+                  </AlertDescription>
+                </Alert>
 
-            <div className="space-y-2">
-              <Label htmlFor="targetDate">Data Objetivo</Label>
-              <Input
-                id="targetDate"
-                type="date"
-                value={formData.targetDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
-                className={errors.targetDate ? 'border-red-500' : ''}
-              />
-              {errors.targetDate && <p className="text-sm text-red-500">{errors.targetDate}</p>}
-            </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="autoAmount">Valor por Contribuição (€)</Label>
+                    <Input
+                      id="autoAmount"
+                      type="number"
+                      step="0.01"
+                      value={formData.autoContributions.amount}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        autoContributions: { ...prev.autoContributions, amount: e.target.value }
+                      }))}
+                      placeholder="50.00"
+                    />
+                  </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-                Cancelar
-              </Button>
-              <Button type="submit" className="flex-1">
-                {goal ? 'Actualizar' : 'Guardar'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="frequency">Frequência</Label>
+                    <Select 
+                      value={formData.autoContributions.frequency} 
+                      onValueChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        autoContributions: { ...prev.autoContributions, frequency: value as 'weekly' | 'monthly' }
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="accountId">Conta de Origem</Label>
+                    <Select 
+                      value={formData.autoContributions.accountId} 
+                      onValueChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        autoContributions: { ...prev.autoContributions, accountId: value }
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a conta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{account.name}</span>
+                              <Badge variant="outline" className="ml-2">
+                                €{account.balance.toFixed(2)}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Conditions */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Condições para Reforço Automático</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                    >
+                      {showAdvanced ? 'Ocultar' : 'Mostrar'} Condições
+                    </Button>
+                  </div>
+
+                  {showAdvanced && (
+                    <div className="space-y-4 p-4 border rounded bg-background">
+                      <div className="grid gap-3 md:grid-cols-5">
+                        <Select 
+                          value={newCondition.type} 
+                          onValueChange={(value) => setNewCondition(prev => ({ 
+                            ...prev, 
+                            type: value as 'transaction_match' | 'surplus_detection' | 'scheduled' 
+                          }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="transaction_match">Transação Específica</SelectItem>
+                            <SelectItem value="surplus_detection">Deteção de Excesso</SelectItem>
+                            <SelectItem value="scheduled">Agendado</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {newCondition.type === 'transaction_match' && (
+                          <Input
+                            value={newCondition.pattern}
+                            onChange={(e) => setNewCondition(prev => ({ ...prev, pattern: e.target.value }))}
+                            placeholder="Ex: Netflix, Salário"
+                            className="md:col-span-2"
+                          />
+                        )}
+
+                        {newCondition.type === 'surplus_detection' && (
+                          <div className="md:col-span-2 flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={newCondition.percentage}
+                              onChange={(e) => setNewCondition(prev => ({ ...prev, percentage: parseInt(e.target.value) }))}
+                              className="w-20"
+                            />
+                            <span className="text-sm text-muted-foreground">% do excesso mensal</span>
+                          </div>
+                        )}
+
+                        {newCondition.type === 'scheduled' && (
+                          <div className="md:col-span-2 text-sm text-muted-foreground flex items-center">
+                            Contribuição regular baseada na frequência
+                          </div>
+                        )}
+
+                        <Button type="button" size="sm" onClick={addCondition}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Adicionar
+                        </Button>
+                      </div>
+
+                      {formData.autoContributions.conditions.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Condições Configuradas:</Label>
+                          {formData.autoContributions.conditions.map((condition, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                              <div className="flex items-center gap-2">
+                                {condition.type === 'transaction_match' && (
+                                  <Badge variant="secondary">Transação</Badge>
+                                )}
+                                {condition.type === 'surplus_detection' && (
+                                  <Badge variant="secondary">Excesso</Badge>
+                                )}
+                                {condition.type === 'scheduled' && (
+                                  <Badge variant="secondary">Agendado</Badge>
+                                )}
+                                <span className="text-sm">
+                                  {condition.type === 'transaction_match' 
+                                    ? `Transações contendo: "${condition.pattern}"` 
+                                    : condition.type === 'surplus_detection' 
+                                      ? `${condition.percentage}% do excesso mensal`
+                                      : 'Contribuição regular agendada'
+                                  }
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeCondition(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancelar
+            </Button>
+            <Button type="submit" className="flex-1">
+              <Save className="h-4 w-4 mr-2" />
+              {goal ? 'Atualizar Meta' : 'Criar Meta'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 
 export const SavingsManager: React.FC = () => {
-  const { savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal } = useFinance();
+  const { savingsGoals, addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, transactions } = useFinance();
+  const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
 
@@ -131,7 +476,19 @@ export const SavingsManager: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem a certeza que deseja eliminar esta meta de poupança?')) {
-      await deleteSavingsGoal(id);
+      try {
+        await deleteSavingsGoal(id);
+        toast({
+          title: "Meta eliminada",
+          description: "Meta de poupança eliminada com sucesso.",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível eliminar a meta.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -139,13 +496,25 @@ export const SavingsManager: React.FC = () => {
     try {
       if (editingGoal) {
         await updateSavingsGoal(editingGoal.id, goalData);
+        toast({
+          title: "Meta atualizada",
+          description: "Meta de poupança atualizada com sucesso.",
+        });
       } else {
         await addSavingsGoal(goalData);
+        toast({
+          title: "Meta criada",
+          description: "Nova meta de poupança criada com sucesso.",
+        });
       }
       setShowForm(false);
       setEditingGoal(null);
     } catch (error) {
-      console.error('Erro ao guardar meta de poupança:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível guardar a meta.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -168,9 +537,44 @@ export const SavingsManager: React.FC = () => {
     return 'text-yellow-600';
   };
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // Calculate AI suggestions for auto contributions
+  const calculateAutoContributions = (goal: SavingsGoal) => {
+    if (!goal.autoContributions?.enabled) return [];
+    
+    const suggestions = [];
+    const recentTransactions = transactions.slice(0, 50); // Last 50 transactions
+    
+    goal.autoContributions.conditions?.forEach(condition => {
+      if (condition.type === 'transaction_match' && condition.pattern) {
+        const matchingTransactions = recentTransactions.filter(t => 
+          t.description.toLowerCase().includes(condition.pattern.toLowerCase())
+        );
+        if (matchingTransactions.length > 0) {
+          suggestions.push({
+            type: 'match',
+            count: matchingTransactions.length,
+            pattern: condition.pattern
+          });
+        }
+      }
+    });
+    
+    return suggestions;
+  };
+
   const totalTarget = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
   const totalSaved = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
   const completedGoals = savingsGoals.filter(goal => goal.currentAmount >= goal.targetAmount).length;
+  const aiEnabledGoals = savingsGoals.filter(goal => goal.autoContributions?.enabled).length;
 
   return (
     <div className="space-y-6">
@@ -178,16 +582,18 @@ export const SavingsManager: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Metas de Poupança</h1>
-          <p className="text-muted-foreground">Defina e acompanhe os seus objectivos de poupança</p>
+          <p className="text-muted-foreground">
+            Defina objetivos inteligentes com reforços automáticos baseados em IA
+          </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={() => setShowForm(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
           Nova Meta
         </Button>
       </div>
 
-      {/* Summary */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Enhanced Summary */}
+      <div className="grid gap-4 md:grid-cols-5">
         <Card className="bg-gradient-card shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Objetivos</CardTitle>
@@ -196,6 +602,7 @@ export const SavingsManager: React.FC = () => {
             <div className="text-2xl font-bold">€{totalTarget.toFixed(2)}</div>
           </CardContent>
         </Card>
+        
         <Card className="bg-gradient-card shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Poupado</CardTitle>
@@ -204,6 +611,7 @@ export const SavingsManager: React.FC = () => {
             <div className="text-2xl font-bold text-green-600">€{totalSaved.toFixed(2)}</div>
           </CardContent>
         </Card>
+        
         <Card className="bg-gradient-card shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Progresso Geral</CardTitle>
@@ -214,6 +622,7 @@ export const SavingsManager: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+        
         <Card className="bg-gradient-card shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Metas Concluídas</CardTitle>
@@ -221,6 +630,18 @@ export const SavingsManager: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               {completedGoals} / {savingsGoals.length}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-card shadow-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">IA Ativa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600 flex items-center gap-2">
+              {aiEnabledGoals}
+              <Zap className="h-4 w-4" />
             </div>
           </CardContent>
         </Card>
@@ -234,7 +655,7 @@ export const SavingsManager: React.FC = () => {
               <PiggyBank className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">Nenhuma meta de poupança</h3>
               <p className="text-muted-foreground mb-4">
-                Defina objetivos de poupança para alcançar os seus sonhos
+                Crie metas inteligentes com reforços automáticos baseados em IA
               </p>
               <Button onClick={() => setShowForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -248,6 +669,7 @@ export const SavingsManager: React.FC = () => {
             const daysRemaining = getDaysRemaining(goal.targetDate);
             const isCompleted = progress >= 100;
             const remaining = goal.targetAmount - goal.currentAmount;
+            const autoSuggestions = calculateAutoContributions(goal);
 
             return (
               <Card key={goal.id} className="bg-gradient-card shadow-card">
@@ -257,22 +679,36 @@ export const SavingsManager: React.FC = () => {
                       <PiggyBank className="h-5 w-5 text-primary" />
                       <CardTitle className="text-base">{goal.name}</CardTitle>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
+                      {goal.priority && (
+                        <Badge variant="outline" className={getPriorityColor(goal.priority)}>
+                          {goal.priority === 'high' ? 'Alta' : goal.priority === 'medium' ? 'Média' : 'Baixa'}
+                        </Badge>
+                      )}
+                      {goal.autoContributions?.enabled && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Zap className="h-3 w-3" />
+                          IA
+                        </Badge>
+                      )}
                       {isCompleted && (
                         <Badge variant="default" className="gap-1">
                           <Target className="h-3 w-3" />
                           Concluída
                         </Badge>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(goal)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(goal.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(goal)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(goal.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardHeader>
+                
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
@@ -300,6 +736,28 @@ export const SavingsManager: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {goal.category && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">Categoria:</span>
+                      <Badge variant="outline">{goal.category}</Badge>
+                    </div>
+                  )}
+
+                  {/* Auto Contribution Status */}
+                  {goal.autoContributions?.enabled && (
+                    <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Zap className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-blue-600">Reforços Automáticos Ativos</span>
+                      </div>
+                      {autoSuggestions.length > 0 && (
+                        <div className="mt-1 text-xs text-blue-600">
+                          {autoSuggestions.length} condições detectadas recentemente
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="pt-2 border-t">
                     <div className="flex items-center gap-2 text-sm">
