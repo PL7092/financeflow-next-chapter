@@ -30,61 +30,61 @@ const navigation = [
   },
   {
     name: "Transações",
-    href: "/transactions",
+    href: "/",
     icon: CreditCard,
     current: false,
   },
   {
     name: "Orçamentos",
-    href: "/budgets",
+    href: "/",
     icon: Target,
     current: false,
   },
   {
     name: "Contas",
-    href: "/accounts",
+    href: "/",
     icon: Wallet,
     current: false,
   },
   {
     name: "Investimentos",
-    href: "/investments",
+    href: "/",
     icon: TrendingUp,
     current: false,
   },
   {
     name: "Recorrentes",
-    href: "/recurring",
+    href: "/",
     icon: Calendar,
     current: false,
   },
   {
     name: "Poupanças",
-    href: "/savings",
+    href: "/",
     icon: PiggyBank,
     current: false,
   },
   {
     name: "Ativos",
-    href: "/assets",
+    href: "/",
     icon: Car,
     current: false,
   },
   {
     name: "Relatórios",
-    href: "/reports",
+    href: "/",
     icon: BarChart3,
     current: false,
   },
   {
     name: "Conselheiro IA",
-    href: "/ai-advisor",
+    href: "/",
     icon: Brain,
     current: false,
   },
   {
     name: "Importar/Exportar",
-    href: "/import-export",
+    href: "/",
     icon: Upload,
     current: false,
   },
@@ -123,7 +123,7 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
       
       <div className="p-4 border-t border-border">
-        <Link to="/settings">
+        <Link to="/">
           <Button variant="ghost" className="w-full justify-start gap-3 h-10">
             <Settings className="h-4 w-4" />
             Configurações
