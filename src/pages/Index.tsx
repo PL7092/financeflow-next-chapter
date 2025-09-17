@@ -14,10 +14,22 @@ import {
   Calendar,
   Filter
 } from "lucide-react";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+
 
 const Index = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.getElementById(location.hash.slice(1));
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.hash]);
+
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div id="topo" className="flex-1 space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -45,48 +57,64 @@ const Index = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Saldo Total"
-          value="€15.247,85"
-          change="+€1.245,30 este mês"
-          changeType="positive"
-          icon={Wallet}
-        />
-        <StatCard
-          title="Receitas"
-          value="€4.350,00"
-          change="+12% vs mês anterior"
-          changeType="positive"
-          icon={TrendingUp}
-        />
-        <StatCard
-          title="Despesas"
-          value="€2.891,45"
-          change="-8% vs mês anterior"
-          changeType="positive"
-          icon={Target}
-        />
-        <StatCard
-          title="Poupanças"
-          value="€1.458,55"
-          change="+€458,55 este mês"
-          changeType="positive"
-          icon={PiggyBank}
-        />
+        <div id="contas">
+          <StatCard
+            title="Saldo Total"
+            value="€15.247,85"
+            change="+€1.245,30 este mês"
+            changeType="positive"
+            icon={Wallet}
+          />
+        </div>
+        <div id="receitas">
+          <StatCard
+            title="Receitas"
+            value="€4.350,00"
+            change="+12% vs mês anterior"
+            changeType="positive"
+            icon={TrendingUp}
+          />
+        </div>
+        <div id="despesas">
+          <StatCard
+            title="Despesas"
+            value="€2.891,45"
+            change="-8% vs mês anterior"
+            changeType="positive"
+            icon={Target}
+          />
+        </div>
+        <div id="poupancas">
+          <StatCard
+            title="Poupanças"
+            value="€1.458,55"
+            change="+€458,55 este mês"
+            changeType="positive"
+            icon={PiggyBank}
+          />
+        </div>
       </div>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - 2 sections */}
         <div className="lg:col-span-2 space-y-6">
-          <RecentTransactions />
-          <InvestmentSummary />
+          <section id="transacoes">
+            <RecentTransactions />
+          </section>
+          <section id="investimentos">
+            <InvestmentSummary />
+          </section>
         </div>
         
         {/* Right Column - 2 sections */}
         <div className="space-y-6">
-          <QuickActions />
-          <BudgetOverview />
+          <section id="acoes-rapidas">
+            <QuickActions />
+          </section>
+          <section id="orcamentos">
+            <BudgetOverview />
+          </section>
         </div>
       </div>
     </div>
