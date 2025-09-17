@@ -56,6 +56,22 @@ export interface RecurringTransaction {
   nextDate: string;
   isActive: boolean;
   created_at: string;
+  // Enhanced features
+  expectedAmount?: number;
+  tolerancePercentage?: number;
+  alertOnVariation?: boolean;
+  aiRecommendations?: {
+    suggestedAmount?: number;
+    reason?: string;
+    confidence?: number;
+  };
+  lastProcessed?: string;
+  variationHistory?: Array<{
+    date: string;
+    expected: number;
+    actual: number;
+    variance: number;
+  }>;
 }
 
 export interface Asset {
@@ -65,6 +81,29 @@ export interface Asset {
   value: number;
   purchaseDate: string;
   created_at: string;
+  // Enhanced features
+  purchasePrice?: number;
+  maintenanceCosts?: Array<{
+    id: string;
+    date: string;
+    description: string;
+    amount: number;
+    type: 'maintenance' | 'insurance' | 'tax' | 'other';
+  }>;
+  associatedTransactions?: string[]; // Transaction IDs
+  documents?: Array<{
+    id: string;
+    name: string;
+    type: 'invoice' | 'warranty' | 'insurance' | 'manual' | 'other';
+    url?: string;
+    uploadDate: string;
+  }>;
+  depreciation?: {
+    method: 'linear' | 'accelerated' | 'none';
+    rate?: number;
+    usefulLife?: number;
+  };
+  notes?: string;
 }
 
 export interface SavingsGoal {
@@ -74,6 +113,29 @@ export interface SavingsGoal {
   currentAmount: number;
   targetDate: string;
   created_at: string;
+  // Enhanced features
+  category?: string;
+  priority: 'low' | 'medium' | 'high';
+  autoContributions?: {
+    enabled: boolean;
+    amount?: number;
+    frequency?: 'weekly' | 'monthly';
+    accountId?: string;
+    conditions?: Array<{
+      type: 'transaction_match' | 'surplus_detection' | 'scheduled';
+      pattern?: string; // For transaction matching
+      percentage?: number; // For surplus detection
+    }>;
+  };
+  milestones?: Array<{
+    id: string;
+    amount: number;
+    description: string;
+    achieved: boolean;
+    achievedDate?: string;
+  }>;
+  associatedTransactions?: string[]; // Transaction IDs that contributed
+  notes?: string;
 }
 
 export interface Category {
@@ -81,12 +143,34 @@ export interface Category {
   name: string;
   type: 'income' | 'expense';
   color: string;
+  // Enhanced features
+  parentId?: string; // For subcategories
+  icon?: string;
+  keywords?: string[]; // For AI categorization
+  rules?: Array<{
+    id: string;
+    condition: string; // e.g., "description contains 'netflix'"
+    confidence: number;
+    active: boolean;
+  }>;
+  budgetDefault?: number;
+  isActive: boolean;
 }
 
 export interface Entity {
   id: string;
   name: string;
   type: string;
+  // Enhanced features
+  aliases?: string[]; // Alternative names for matching
+  defaultCategory?: string;
+  website?: string;
+  notes?: string;
+  transactionPatterns?: Array<{
+    pattern: string;
+    confidence: number;
+  }>;
+  isActive: boolean;
 }
 
 interface FinanceContextType {
@@ -155,11 +239,11 @@ export const useFinance = () => {
 // Mock data for development (will be replaced with MariaDB calls)
 const mockData = {
   categories: [
-    { id: '1', name: 'Alimentação', type: 'expense' as const, color: '#FF6B6B' },
-    { id: '2', name: 'Transporte', type: 'expense' as const, color: '#4ECDC4' },
-    { id: '3', name: 'Entretenimento', type: 'expense' as const, color: '#45B7D1' },
-    { id: '4', name: 'Salário', type: 'income' as const, color: '#96CEB4' },
-    { id: '5', name: 'Freelance', type: 'income' as const, color: '#FFEAA7' },
+    { id: '1', name: 'Alimentação', type: 'expense' as const, color: '#FF6B6B', isActive: true },
+    { id: '2', name: 'Transporte', type: 'expense' as const, color: '#4ECDC4', isActive: true },
+    { id: '3', name: 'Entretenimento', type: 'expense' as const, color: '#45B7D1', isActive: true },
+    { id: '4', name: 'Salário', type: 'income' as const, color: '#96CEB4', isActive: true },
+    { id: '5', name: 'Freelance', type: 'income' as const, color: '#FFEAA7', isActive: true },
   ],
   accounts: [
     { id: '1', name: 'Conta Principal', type: 'checking' as const, balance: 15247.85, currency: 'EUR', created_at: new Date().toISOString() },
@@ -167,9 +251,9 @@ const mockData = {
     { id: '3', name: 'Cartão de Crédito', type: 'credit' as const, balance: -1500.00, currency: 'EUR', created_at: new Date().toISOString() },
   ],
   entities: [
-    { id: '1', name: 'Continente', type: 'Supermercado' },
-    { id: '2', name: 'Galp', type: 'Combustível' },
-    { id: '3', name: 'Netflix', type: 'Streaming' },
+    { id: '1', name: 'Continente', type: 'Supermercado', isActive: true },
+    { id: '2', name: 'Galp', type: 'Combustível', isActive: true },
+    { id: '3', name: 'Netflix', type: 'Streaming', isActive: true },
   ]
 };
 

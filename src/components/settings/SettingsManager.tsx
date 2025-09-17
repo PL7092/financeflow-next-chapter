@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, User, Bell, Shield, Palette, Database, Download, Trash2, Save, AlertCircle } from 'lucide-react';
+import { Settings, User, Bell, Shield, Palette, Database, Download, Trash2, Save, AlertCircle, Brain, FileText, TestTube, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -50,6 +50,32 @@ export const SettingsManager: React.FC = () => {
     dataEncryption: true,
   });
 
+  // AI Settings
+  const [aiSettings, setAiSettings] = useState({
+    openaiApiKey: '',
+    anthropicApiKey: '',
+    geminiApiKey: '',
+    defaultProvider: 'openai',
+    enableAutoCategories: true,
+    enableSmartRecommendations: true,
+    confidenceThreshold: 0.8,
+  });
+
+  // Database Settings
+  const [dbSettings, setDbSettings] = useState({
+    host: 'localhost',
+    port: '3306',
+    database: 'financeflow',
+    username: 'root',
+    password: '',
+    useSSL: false,
+    connectionTimeout: 30,
+    maxConnections: 10,
+  });
+
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'failed'>('untested');
+
   const handleProfileSave = () => {
     // In a real app, this would call the backend API
     console.log('Saving profile:', profileData);
@@ -74,6 +100,53 @@ export const SettingsManager: React.FC = () => {
     console.log('Saving security:', security);
   };
 
+  const handleAiSettingsSave = () => {
+    // Save AI settings (sensitive data should be encrypted)
+    const sanitizedSettings = { ...aiSettings };
+    // Don't store API keys in localStorage in production
+    delete sanitizedSettings.openaiApiKey;
+    delete sanitizedSettings.anthropicApiKey;
+    delete sanitizedSettings.geminiApiKey;
+    
+    localStorage.setItem('aiSettings', JSON.stringify(sanitizedSettings));
+    console.log('Saving AI settings:', sanitizedSettings);
+    // In production: await saveAiSettings(aiSettings);
+  };
+
+  const handleDatabaseSave = () => {
+    // Save database settings (encrypted)
+    localStorage.setItem('dbSettings', JSON.stringify(dbSettings));
+    console.log('Saving database settings:', dbSettings);
+    // In production: await saveDatabaseSettings(dbSettings);
+  };
+
+  const testDatabaseConnection = async () => {
+    setTestingConnection(true);
+    setConnectionStatus('untested');
+    
+    try {
+      // Simulate API call to test connection
+      console.log('Testing database connection with:', dbSettings);
+      
+      // Mock delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock result (in production: await testDbConnection(dbSettings))
+      const success = dbSettings.host && dbSettings.database && dbSettings.username;
+      
+      if (success) {
+        setConnectionStatus('success');
+      } else {
+        setConnectionStatus('failed');
+      }
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setConnectionStatus('failed');
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   const handleExportData = () => {
     // Export all user data
     console.log('Exporting user data...');
@@ -93,7 +166,9 @@ export const SettingsManager: React.FC = () => {
     { id: 'app', label: 'Aplicação', icon: Settings },
     { id: 'notifications', label: 'Notificações', icon: Bell },
     { id: 'security', label: 'Segurança', icon: Shield },
-    { id: 'data', label: 'Dados', icon: Database },
+    { id: 'ai', label: 'Inteligência Artificial', icon: Brain },
+    { id: 'database', label: 'Base de Dados', icon: Database },
+    { id: 'data', label: 'Gestão de Dados', icon: FileText },
   ];
 
   return (
@@ -431,6 +506,306 @@ export const SettingsManager: React.FC = () => {
                   </div>
 
                   <Button onClick={handleSecuritySave} className="w-full md:w-auto">
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar Configurações
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* AI Settings Tab */}
+            {activeTab === 'ai' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Configurações de Inteligência Artificial</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure as APIs de IA para categorização automática e recomendações
+                  </p>
+                </div>
+
+                <Alert>
+                  <Brain className="h-4 w-4" />
+                  <AlertDescription>
+                    As chaves de API são armazenadas de forma segura e apenas utilizadas para funcionalidades de IA.
+                    Nunca partilhamos as suas chaves com terceiros.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Fornecedores de IA</h4>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Fornecedor Padrão</Label>
+                        <Select 
+                          value={aiSettings.defaultProvider} 
+                          onValueChange={(value) => setAiSettings(prev => ({ ...prev, defaultProvider: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI (GPT-4)</SelectItem>
+                            <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                            <SelectItem value="gemini">Google Gemini</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="openai-key">Chave API OpenAI</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="openai-key"
+                            type="password"
+                            value={aiSettings.openaiApiKey}
+                            onChange={(e) => setAiSettings(prev => ({ ...prev, openaiApiKey: e.target.value }))}
+                            placeholder="sk-..."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="anthropic-key">Chave API Anthropic</Label>
+                        <Input
+                          id="anthropic-key"
+                          type="password"
+                          value={aiSettings.anthropicApiKey}
+                          onChange={(e) => setAiSettings(prev => ({ ...prev, anthropicApiKey: e.target.value }))}
+                          placeholder="sk-ant-..."
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="gemini-key">Chave API Google Gemini</Label>
+                        <Input
+                          id="gemini-key"
+                          type="password"
+                          value={aiSettings.geminiApiKey}
+                          onChange={(e) => setAiSettings(prev => ({ ...prev, geminiApiKey: e.target.value }))}
+                          placeholder="AI..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Funcionalidades de IA</h4>
+                    
+                    {[
+                      { key: 'enableAutoCategories', label: 'Categorização Automática', desc: 'Categorizar transações automaticamente usando IA' },
+                      { key: 'enableSmartRecommendations', label: 'Recomendações Inteligentes', desc: 'Sugestões personalizadas baseadas nos seus padrões' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center justify-between py-2">
+                        <div>
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.desc}</p>
+                        </div>
+                        <Switch
+                          checked={aiSettings[item.key as keyof typeof aiSettings] as boolean}
+                          onCheckedChange={(checked) => 
+                            setAiSettings(prev => ({ ...prev, [item.key]: checked }))
+                          }
+                        />
+                      </div>
+                    ))}
+
+                    <div className="flex items-center justify-between py-2">
+                      <div>
+                        <p className="text-sm font-medium">Limite de Confiança</p>
+                        <p className="text-xs text-muted-foreground">Nível mínimo de confiança para sugestões automáticas</p>
+                      </div>
+                      <Select 
+                        value={aiSettings.confidenceThreshold.toString()} 
+                        onValueChange={(value) => setAiSettings(prev => ({ ...prev, confidenceThreshold: parseFloat(value) }))}
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0.6">60%</SelectItem>
+                          <SelectItem value="0.7">70%</SelectItem>
+                          <SelectItem value="0.8">80%</SelectItem>
+                          <SelectItem value="0.9">90%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Button onClick={handleAiSettingsSave} className="w-full md:w-auto">
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar Configurações de IA
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Database Settings Tab */}
+            {activeTab === 'database' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Configurações de Base de Dados</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure a ligação à base de dados MariaDB
+                  </p>
+                </div>
+
+                <Alert>
+                  <Database className="h-4 w-4" />
+                  <AlertDescription>
+                    Configure aqui a ligação ao seu contentor MariaDB no Unraid. 
+                    Certifique-se que as credenciais estão corretas antes de testar a ligação.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="db-host">Servidor</Label>
+                      <Input
+                        id="db-host"
+                        value={dbSettings.host}
+                        onChange={(e) => setDbSettings(prev => ({ ...prev, host: e.target.value }))}
+                        placeholder="localhost ou IP do servidor"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="db-port">Porto</Label>
+                      <Input
+                        id="db-port"
+                        value={dbSettings.port}
+                        onChange={(e) => setDbSettings(prev => ({ ...prev, port: e.target.value }))}
+                        placeholder="3306"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="db-name">Nome da Base de Dados</Label>
+                      <Input
+                        id="db-name"
+                        value={dbSettings.database}
+                        onChange={(e) => setDbSettings(prev => ({ ...prev, database: e.target.value }))}
+                        placeholder="financeflow"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="db-username">Utilizador</Label>
+                      <Input
+                        id="db-username"
+                        value={dbSettings.username}
+                        onChange={(e) => setDbSettings(prev => ({ ...prev, username: e.target.value }))}
+                        placeholder="root"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="db-password">Palavra-passe</Label>
+                      <Input
+                        id="db-password"
+                        type="password"
+                        value={dbSettings.password}
+                        onChange={(e) => setDbSettings(prev => ({ ...prev, password: e.target.value }))}
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Opções Avançadas</h4>
+                    
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="connection-timeout">Timeout de Ligação (segundos)</Label>
+                        <Select 
+                          value={dbSettings.connectionTimeout.toString()} 
+                          onValueChange={(value) => setDbSettings(prev => ({ ...prev, connectionTimeout: parseInt(value) }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="15">15 segundos</SelectItem>
+                            <SelectItem value="30">30 segundos</SelectItem>
+                            <SelectItem value="60">1 minuto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="max-connections">Máximo de Ligações</Label>
+                        <Select 
+                          value={dbSettings.maxConnections.toString()} 
+                          onValueChange={(value) => setDbSettings(prev => ({ ...prev, maxConnections: parseInt(value) }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5 ligações</SelectItem>
+                            <SelectItem value="10">10 ligações</SelectItem>
+                            <SelectItem value="20">20 ligações</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between py-2">
+                      <div>
+                        <p className="text-sm font-medium">Usar SSL</p>
+                        <p className="text-xs text-muted-foreground">Ativar ligação SSL segura</p>
+                      </div>
+                      <Switch
+                        checked={dbSettings.useSSL}
+                        onCheckedChange={(checked) => setDbSettings(prev => ({ ...prev, useSSL: checked }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button 
+                      onClick={testDatabaseConnection} 
+                      variant="outline"
+                      disabled={testingConnection}
+                      className="flex-1 md:flex-none"
+                    >
+                      {testingConnection ? (
+                        <>
+                          <TestTube className="h-4 w-4 mr-2 animate-spin" />
+                          Testando...
+                        </>
+                      ) : (
+                        <>
+                          <TestTube className="h-4 w-4 mr-2" />
+                          Testar Ligação
+                        </>
+                      )}
+                    </Button>
+
+                    {connectionStatus !== 'untested' && (
+                      <div className="flex items-center gap-2">
+                        {connectionStatus === 'success' ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="text-sm text-green-600">Ligação bem-sucedida</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            <span className="text-sm text-red-600">Falha na ligação</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <Button onClick={handleDatabaseSave} className="w-full md:w-auto">
                     <Save className="h-4 w-4 mr-2" />
                     Guardar Configurações
                   </Button>

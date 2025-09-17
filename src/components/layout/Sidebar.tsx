@@ -14,7 +14,8 @@ import {
   Brain,
   Settings,
   FileText,
-  Upload
+  Upload,
+  Database
 } from "lucide-react";
 
 interface SidebarProps {
@@ -71,6 +72,11 @@ const navigation = [
     name: "Conselheiro IA",
     href: "/ai-advisor",
     icon: Brain,
+  },
+  {
+    name: "Gestão de Dados",
+    href: "/data",
+    icon: Database,
   },
   {
     name: "Importar/Exportar",

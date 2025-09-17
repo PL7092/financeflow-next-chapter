@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { FinanceProvider } from "./contexts/FinanceContext";
 import { Login } from "./components/auth/Login";
 import Index from "./pages/Index";
+import Data from "./pages/Data";
 import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
 import Accounts from "./pages/Accounts";
@@ -49,6 +50,7 @@ const AppContent = () => {
             <div className="container mx-auto px-6 py-8">
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/data" element={<Data />} />
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/budgets" element={<Budgets />} />
                 <Route path="/accounts" element={<Accounts />} />
