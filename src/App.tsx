@@ -13,6 +13,13 @@ import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
 import Accounts from "./pages/Accounts";
 import Investments from "./pages/Investments";
+import Recurring from "./pages/Recurring";
+import Savings from "./pages/Savings";
+import Assets from "./pages/Assets";
+import Reports from "./pages/Reports";
+import AIAdvisor from "./pages/AIAdvisor";
+import ImportExport from "./pages/ImportExport";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +53,13 @@ const AppContent = () => {
                 <Route path="/budgets" element={<Budgets />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/investments" element={<Investments />} />
+                <Route path="/recurring" element={<Recurring />} />
+                <Route path="/savings" element={<Savings />} />
+                <Route path="/assets" element={<Assets />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/ai-advisor" element={<AIAdvisor />} />
+                <Route path="/import-export" element={<ImportExport />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { 
@@ -26,71 +26,62 @@ const navigation = [
     name: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
-    current: true,
   },
   {
     name: "Transações",
-    href: "/#transacoes",
+    href: "/transactions",
     icon: CreditCard,
-    current: false,
   },
   {
     name: "Orçamentos",
-    href: "/#orcamentos",
+    href: "/budgets",
     icon: Target,
-    current: false,
   },
   {
     name: "Contas",
-    href: "/#contas",
+    href: "/accounts",
     icon: Wallet,
-    current: false,
   },
   {
     name: "Investimentos",
-    href: "/#investimentos",
+    href: "/investments",
     icon: TrendingUp,
-    current: false,
   },
   {
     name: "Recorrentes",
-    href: "/#transacoes",
+    href: "/recurring",
     icon: Calendar,
-    current: false,
   },
   {
     name: "Poupanças",
-    href: "/#poupancas",
+    href: "/savings",
     icon: PiggyBank,
-    current: false,
   },
   {
     name: "Ativos",
-    href: "/#investimentos",
+    href: "/assets",
     icon: Car,
-    current: false,
   },
   {
     name: "Relatórios",
-    href: "/#transacoes",
+    href: "/reports",
     icon: BarChart3,
-    current: false,
   },
   {
     name: "Conselheiro IA",
-    href: "/#acoes-rapidas",
+    href: "/ai-advisor",
     icon: Brain,
-    current: false,
   },
   {
     name: "Importar/Exportar",
-    href: "/#acoes-rapidas",
+    href: "/import-export",
     icon: Upload,
-    current: false,
   },
 ];
 
 export function Sidebar({ className }: SidebarProps) {
+  const location = useLocation();
+  
   return (
     <div className={cn("flex h-full w-64 flex-col bg-gradient-sidebar border-r border-border", className)}>
       <div className="flex h-16 items-center px-6 border-b border-border">
@@ -105,13 +96,14 @@ export function Sidebar({ className }: SidebarProps) {
       <nav className="flex-1 space-y-1 px-4 py-6">
         {navigation.map((item) => {
           const Icon = item.icon;
+          const isActive = location.pathname === item.href;
           return (
             <Link key={item.name} to={item.href}>
               <Button
-                variant={item.current ? "default" : "ghost"}
+                variant={isActive ? "default" : "ghost"}
                 className={cn(
                   "w-full justify-start gap-3 h-10",
-                  item.current && "bg-gradient-primary shadow-card"
+                  isActive && "bg-gradient-primary shadow-card"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -123,7 +115,7 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
       
       <div className="p-4 border-t border-border">
-        <Link to="/">
+        <Link to="/settings">
           <Button variant="ghost" className="w-full justify-start gap-3 h-10">
             <Settings className="h-4 w-4" />
             Configurações
