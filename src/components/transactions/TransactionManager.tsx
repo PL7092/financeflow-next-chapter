@@ -16,10 +16,10 @@ export const TransactionManager: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
   const [filters, setFilters] = useState({
     search: '',
-    type: '',
-    category: '',
-    entity: '',
-    account: '',
+    type: 'all',
+    category: 'all',
+    entity: 'all',
+    account: 'all',
     dateFrom: '',
     dateTo: '',
     amountMin: '',
@@ -32,10 +32,10 @@ export const TransactionManager: React.FC = () => {
         t.description.toLowerCase().includes(filters.search.toLowerCase()) ||
         (t.tags && t.tags.some(tag => tag.toLowerCase().includes(filters.search.toLowerCase())));
 
-      const matchesType = filters.type === '' || t.type === filters.type;
-      const matchesCategory = filters.category === '' || t.category === filters.category;
-      const matchesEntity = filters.entity === '' || t.entity === filters.entity;
-      const matchesAccount = filters.account === '' || t.account === filters.account;
+      const matchesType = filters.type === 'all' || t.type === filters.type;
+      const matchesCategory = filters.category === 'all' || t.category === filters.category;
+      const matchesEntity = filters.entity === 'all' || t.entity === filters.entity;
+      const matchesAccount = filters.account === 'all' || t.account === filters.account;
 
       const matchesDateFrom = filters.dateFrom === '' || new Date(t.date) >= new Date(filters.dateFrom);
       const matchesDateTo = filters.dateTo === '' || new Date(t.date) <= new Date(filters.dateTo);
@@ -257,7 +257,7 @@ export const TransactionManager: React.FC = () => {
                   <SelectValue placeholder="Todos os tipos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os tipos</SelectItem>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
                   <SelectItem value="income">Receitas</SelectItem>
                   <SelectItem value="expense">Despesas</SelectItem>
                   <SelectItem value="transfer">Transferências</SelectItem>
@@ -276,7 +276,7 @@ export const TransactionManager: React.FC = () => {
                   <SelectValue placeholder="Todas as categorias" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as categorias</SelectItem>
+                  <SelectItem value="all">Todas as categorias</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ export const TransactionManager: React.FC = () => {
                   <SelectValue placeholder="Todas as contas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as contas</SelectItem>
+                  <SelectItem value="all">Todas as contas</SelectItem>
                   {accounts.map((account) => (
                     <SelectItem key={account.id} value={account.name}>
                       {account.name}
