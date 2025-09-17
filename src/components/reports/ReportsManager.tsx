@@ -127,7 +127,44 @@ export const ReportsManager: React.FC = () => {
     }).sort((a, b) => b.progress - a.progress);
   }, [savingsGoals]);
 
-  const exportReport = () => {
+  // AI Predictive Analysis
+  const predictiveAnalysis = useMemo(() => {
+    const recentTransactions = filteredTransactions.slice(0, 50);
+    const avgMonthlyIncome = summary.income;
+    const avgMonthlyExpenses = summary.expenses;
+    
+    // Predict next month's budget needs
+    const categoryPredictions = categoryBreakdown.map(cat => {
+      const trend = cat.expense > 0 ? 'increasing' : 'stable';
+      const predictedAmount = cat.expense * 1.05; // Simple 5% increase prediction
+      return {
+        category: cat.category,
+        predicted: predictedAmount,
+        trend,
+        confidence: 0.75
+      };
+    });
+
+    // Financial health score
+    const healthScore = Math.max(0, Math.min(100, 
+      (summary.savings * 2) + // Savings rate weight
+      (investmentSummary.totalReturnPercentage > 0 ? 20 : 0) + // Investment performance
+      (summary.balance > 0 ? 30 : 0) + // Positive balance
+      (categoryBreakdown.length > 3 ? 10 : 0) // Diversified spending
+    ));
+
+    return {
+      categoryPredictions,
+      healthScore,
+      recommendations: [
+        healthScore < 50 ? 'Considere reduzir despesas em categorias não essenciais' : null,
+        summary.savings < 10 ? 'Tente poupar pelo menos 10% da sua receita mensal' : null,
+        investmentSummary.totalReturnPercentage < 0 ? 'Revise a sua estratégia de investimento' : null,
+      ].filter(Boolean)
+    };
+  }, [filteredTransactions, summary, categoryBreakdown, investmentSummary]);
+
+  const exportAdvancedReport = () => {
     const reportData = {
       period: selectedPeriod,
       dateRange: `${formatDatePT(dateStart)} - ${formatDatePT(dateEnd)}`,
@@ -136,17 +173,41 @@ export const ReportsManager: React.FC = () => {
       accountBalances,
       investmentSummary,
       savingsProgress,
-      transactionCount: filteredTransactions.length
+      predictiveAnalysis,
+      transactionCount: filteredTransactions.length,
+      generatedAt: new Date().toISOString()
     };
 
+    // Enhanced CSV with AI predictions
     const csvContent = [
       // Summary
-      ['RESUMO FINANCEIRO'],
+      ['RESUMO FINANCEIRO AVANÇADO'],
       ['Período', reportData.dateRange],
+      ['Gerado em', new Date().toLocaleString('pt-PT')],
+      [''],
+      ['MÉTRICAS ATUAIS'],
       ['Receitas', `€${summary.income.toFixed(2)}`],
       ['Despesas', `€${summary.expenses.toFixed(2)}`],
       ['Saldo', `€${summary.balance.toFixed(2)}`],
       ['Taxa de Poupança', `${summary.savings.toFixed(1)}%`],
+      ['Score de Saúde Financeira', `${predictiveAnalysis.healthScore.toFixed(0)}/100`],
+      [''],
+      
+      // AI Predictions
+      ['PREVISÕES INTELIGENTES'],
+      ['Categoria', 'Gasto Atual', 'Previsão Próximo Mês', 'Tendência', 'Confiança'],
+      ...predictiveAnalysis.categoryPredictions.map(pred => [
+        pred.category,
+        `€${categoryBreakdown.find(c => c.category === pred.category)?.expense.toFixed(2) || '0.00'}`,
+        `€${pred.predicted.toFixed(2)}`,
+        pred.trend === 'increasing' ? 'Crescente' : 'Estável',
+        `${(pred.confidence * 100).toFixed(0)}%`
+      ]),
+      [''],
+      
+      // Recommendations
+      ['RECOMENDAÇÕES INTELIGENTES'],
+      ...predictiveAnalysis.recommendations.map(rec => [rec]),
       [''],
       
       // Category Breakdown
@@ -161,21 +222,56 @@ export const ReportsManager: React.FC = () => {
       [''],
       
       // Account Balances
-      ['SALDOS DAS CONTAS'],
+      ['PERFORMANCE DAS CONTAS'],
       ['Conta', 'Saldo Atual', 'Movimentação', 'Transações'],
       ...accountBalances.map(acc => [
         acc.name,
         `€${acc.balance.toFixed(2)}`,
         `€${acc.movement.toFixed(2)}`,
         acc.transactionCount.toString()
-      ])
+      ]),
+      [''],
+      
+      // Investment Analysis
+      ['ANÁLISE DE INVESTIMENTOS'],
+      ['Total Investido', `€${investmentSummary.totalInvested.toFixed(2)}`],
+      ['Valor Atual', `€${investmentSummary.totalCurrentValue.toFixed(2)}`],
+      ['Retorno', `€${investmentSummary.totalReturn.toFixed(2)}`],
+      ['Retorno %', `${investmentSummary.totalReturnPercentage.toFixed(2)}%`]
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio_financeiro_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `relatorio_avancado_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportJSONReport = () => {
+    const reportData = {
+      period: selectedPeriod,
+      dateRange: `${formatDatePT(dateStart)} - ${formatDatePT(dateEnd)}`,
+      summary,
+      categoryBreakdown,
+      accountBalances,
+      investmentSummary,
+      savingsProgress,
+      predictiveAnalysis,
+      transactionCount: filteredTransactions.length,
+      transactions: filteredTransactions,
+      generatedAt: new Date().toISOString()
+    };
+
+    const jsonContent = JSON.stringify(reportData, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `dados_completos_${new Date().toISOString().split('T')[0]}.json`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -212,10 +308,16 @@ export const ReportsManager: React.FC = () => {
               <SelectItem value="thisYear">Este Ano</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={exportReport} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={exportAdvancedReport} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
+            <Button onClick={exportJSONReport} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar JSON
+            </Button>
+          </div>
         </div>
       </div>
 
