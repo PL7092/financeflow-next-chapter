@@ -45,12 +45,24 @@ const importSteps: ImportStep[] = [
 ];
 
 export const TransactionImportWizard: React.FC = () => {
-  const { accounts, transactions, addTransaction } = useFinance();
+  const { 
+    accounts, 
+    transactions, 
+    addTransaction, 
+    categories, 
+    entities, 
+    recurringTransactions, 
+    investments, 
+    savingsGoals, 
+    assets, 
+    aiRules 
+  } = useFinance();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [currentStep, setCurrentStep] = useState<ImportStep['id']>('upload');
   const [selectedAccount, setSelectedAccount] = useState<string>('');
+  const [destinationAccount, setDestinationAccount] = useState<string>('');
   const [importMethod, setImportMethod] = useState<'file' | 'paste'>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pasteData, setPasteData] = useState<string>('');
@@ -145,7 +157,14 @@ export const TransactionImportWizard: React.FC = () => {
       const result = await AICategorizationService.categorizeTransactions(
         parsedTransactions,
         transactions as Transaction[],
-        existingCategories
+        existingCategories,
+        categories,
+        entities,
+        recurringTransactions,
+        investments,
+        savingsGoals,
+        assets,
+        aiRules
       );
 
       setAiSuggestions(result.suggestions);
@@ -176,9 +195,11 @@ export const TransactionImportWizard: React.FC = () => {
           const transaction = {
             type: suggestion.suggestedType,
             amount: suggestion.originalTransaction.amount,
-            description: suggestion.originalTransaction.description,
+            description: suggestion.optimizedDescription || suggestion.originalTransaction.description,
             category: suggestion.suggestedCategory,
-            account: selectedAccount,
+            subcategory: suggestion.suggestedSubcategory,
+            account: suggestion.suggestedType === 'transfer' ? selectedAccount : selectedAccount,
+            destinationAccount: suggestion.suggestedType === 'transfer' ? destinationAccount : undefined,
             date: suggestion.originalTransaction.date,
             tags: suggestion.suggestedTags
           };
@@ -219,6 +240,7 @@ export const TransactionImportWizard: React.FC = () => {
     setAiSuggestions([]);
     setErrors([]);
     setSelectedAccount('');
+    setDestinationAccount('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -433,12 +455,22 @@ export const TransactionImportWizard: React.FC = () => {
                   <Card key={index} className="border">
                     <CardContent className="p-4">
                       <div className="grid gap-4">
+                        {/* Cabeçalho com informações da transação */}
                         <div className="flex justify-between items-start">
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium">{suggestion.originalTransaction.description}</p>
                             <p className="text-sm text-muted-foreground">
                               {suggestion.originalTransaction.date} • €{suggestion.originalTransaction.amount.toFixed(2)}
                             </p>
+                            {/* Descrição otimizada */}
+                            {suggestion.optimizedDescription && 
+                             suggestion.optimizedDescription !== suggestion.originalTransaction.description && (
+                              <div className="mt-2">
+                                <Badge variant="outline" className="text-xs">
+                                  Sugestão IA: {suggestion.optimizedDescription}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                           <Badge 
                             variant={suggestion.confidence > 0.8 ? "default" : "secondary"}
@@ -447,14 +479,80 @@ export const TransactionImportWizard: React.FC = () => {
                           </Badge>
                         </div>
 
+                        {/* Aviso de possível duplicata */}
+                        {suggestion.possibleDuplicate && (
+                          <Alert className="bg-yellow-50 border-yellow-200">
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertDescription className="text-yellow-800">
+                              <strong>Possível Duplicata!</strong><br />
+                              Encontrada transação similar de €{suggestion.possibleDuplicate.existingTransaction.amount.toFixed(2)} 
+                              em {suggestion.possibleDuplicate.existingTransaction.date} 
+                              ({suggestion.possibleDuplicate.daysDifference} dias de diferença).
+                              <br />
+                              <em>"{suggestion.possibleDuplicate.existingTransaction.description}"</em>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        {/* Associação com entidade */}
+                        {suggestion.associatedEntity && (
+                          <Alert className="bg-blue-50 border-blue-200">
+                            <Info className="h-4 w-4 text-blue-600" />
+                            <AlertDescription className="text-blue-800">
+                              <strong>Associação Encontrada:</strong> {suggestion.associatedEntity.type === 'recurring' ? 'Transação Recorrente' : 
+                              suggestion.associatedEntity.type === 'investment' ? 'Investimento' :
+                              suggestion.associatedEntity.type === 'savings' ? 'Meta de Poupança' : 'Ativo'} 
+                              - {suggestion.associatedEntity.name}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <Label>Categoria</Label>
-                            <Input
+                            <Select
                               value={suggestion.suggestedCategory}
-                              onChange={(e) => updateSuggestion(index, 'suggestedCategory', e.target.value)}
-                            />
+                              onValueChange={(value) => updateSuggestion(index, 'suggestedCategory', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories
+                                  .filter(cat => cat.type === suggestion.suggestedType || suggestion.suggestedType === 'transfer')
+                                  .map(cat => (
+                                    <SelectItem key={cat.id} value={cat.name}>
+                                      {cat.name}
+                                    </SelectItem>
+                                  ))
+                                }
+                              </SelectContent>
+                            </Select>
                           </div>
+
+                          <div>
+                            <Label>Subcategoria</Label>
+                            <Select
+                              value={suggestion.suggestedSubcategory || 'none'}
+                              onValueChange={(value) => updateSuggestion(index, 'suggestedSubcategory', value === 'none' ? undefined : value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecionar subcategoria" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhuma</SelectItem>
+                                 {categories
+                                   .filter(cat => cat.parentId && categories.find(parent => parent.name === suggestion.suggestedCategory && parent.id === cat.parentId))
+                                   .map(sub => (
+                                     <SelectItem key={sub.id} value={sub.name}>
+                                       {sub.name}
+                                     </SelectItem>
+                                   ))
+                                 }
+                              </SelectContent>
+                            </Select>
+                          </div>
+
                           <div>
                             <Label>Tipo</Label>
                             <Select
@@ -471,19 +569,65 @@ export const TransactionImportWizard: React.FC = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div>
-                            <Label>Tags</Label>
-                            <Input
-                              value={suggestion.suggestedTags.join(', ')}
-                              onChange={(e) => updateSuggestion(index, 'suggestedTags', e.target.value.split(',').map(t => t.trim()))}
-                              placeholder="tag1, tag2, tag3"
-                            />
-                          </div>
                         </div>
 
-                        <p className="text-xs text-muted-foreground">
-                          <strong>Análise:</strong> {suggestion.reasoning}
-                        </p>
+                        {/* Campos adicionais para transferência */}
+                        {suggestion.suggestedType === 'transfer' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                            <div>
+                              <Label>Conta de Origem</Label>
+                              <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecionar conta origem" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {accounts.map(account => (
+                                    <SelectItem key={account.id} value={account.name}>
+                                      {account.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label>Conta de Destino</Label>
+                              <Select value={destinationAccount} onValueChange={setDestinationAccount}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecionar conta destino" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {accounts.filter(acc => acc.name !== selectedAccount).map(account => (
+                                    <SelectItem key={account.id} value={account.name}>
+                                      {account.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <Label>Descrição Otimizada</Label>
+                          <Input
+                            value={suggestion.optimizedDescription || suggestion.originalTransaction.description}
+                            onChange={(e) => updateSuggestion(index, 'optimizedDescription', e.target.value)}
+                            placeholder="Descrição da transação"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Tags</Label>
+                          <Input
+                            value={suggestion.suggestedTags.join(', ')}
+                            onChange={(e) => updateSuggestion(index, 'suggestedTags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                            placeholder="Tags separadas por vírgula"
+                          />
+                        </div>
+
+                        <div className="text-sm text-muted-foreground">
+                          <p><strong>Raciocínio IA:</strong> {suggestion.reasoning}</p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -491,7 +635,7 @@ export const TransactionImportWizard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-        )}
+         )}
 
         {currentStep === 'confirm' && (
           <Card className="bg-gradient-card shadow-card">
