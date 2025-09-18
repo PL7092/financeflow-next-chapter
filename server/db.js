@@ -10,23 +10,30 @@ class DatabaseService {
   constructor() {
     this.pool = null;
     this.isConnected = false;
+    this.lastConfig = null;
   }
 
-  async createConnection(config) {
-    // Prioritize user-configured values over environment variables
+  async createConnection(config = {}) {
+    // Prioritize user-configured values over environment variables and normalize types
+    const normalizePort = (p) => {
+      const n = typeof p === 'string' ? parseInt(p, 10) : p;
+      return Number.isFinite(n) ? n : 3306;
+    };
+
     const connectionConfig = {
-      host: (config.host && config.host.trim()) ? config.host : (process.env.DB_HOST || 'mariadb'),
-      port: config.port || process.env.DB_PORT || 3306,
-      user: (config.username && config.username.trim()) ? config.username : (process.env.DB_USER || 'finance_user'),
-      password: (config.password && config.password.trim()) ? config.password : (process.env.DB_PASSWORD || 'finance_user_password_2024'),
-      database: (config.database && config.database.trim()) ? config.database : (process.env.DB_NAME || 'personal_finance'),
-      ssl: config.useSSL || process.env.DB_SSL === 'true' ? {} : false,
-      connectionLimit: config.maxConnections || 10,
-      acquireTimeout: (config.connectionTimeout || 30) * 1000,
+      host: (config.host && String(config.host).trim()) || (process.env.DB_HOST || 'mariadb'),
+      port: normalizePort(config.port || process.env.DB_PORT || 3306),
+      user: (config.username && String(config.username).trim()) || (process.env.DB_USER || 'finance_user'),
+      password: (config.password && String(config.password).trim()) || (process.env.DB_PASSWORD || 'finance_user_password_2024'),
+      database: (config.database && String(config.database).trim()) || (process.env.DB_NAME || 'personal_finance'),
+      ssl: (config.useSSL || process.env.DB_SSL === 'true') ? {} : false,
+      connectionLimit: Number(config.maxConnections) || 10,
+      acquireTimeout: (Number(config.connectionTimeout) || 30) * 1000,
       multipleStatements: true,
       charset: 'utf8mb4',
     };
 
+    this.lastConfig = connectionConfig;
     this.pool = mysql.createPool(connectionConfig);
     return this.pool;
   }
@@ -75,13 +82,42 @@ class DatabaseService {
     }
 
     try {
+      // Ensure the target database exists. If we get ER_BAD_DB_ERROR, create it first.
+      try {
+        const testConn = await this.pool.getConnection();
+        await testConn.ping();
+        testConn.release();
+      } catch (err) {
+        if (err && (err.code === 'ER_BAD_DB_ERROR' || /Unknown database/i.test(err.message))) {
+          const { database, ...noDbConfig } = this.lastConfig || {};
+          if (!database) throw err;
+          const tempPool = mysql.createPool({ ...noDbConfig, multipleStatements: true });
+          const tmpConn = await tempPool.getConnection();
+          await tmpConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+          tmpConn.release();
+          await tempPool.end();
+          // Recreate pool now that the DB exists
+          this.pool = mysql.createPool(this.lastConfig);
+        } else {
+          throw err;
+        }
+      }
+
       // Read the init.sql file
       const sqlPath = path.join(__dirname, '..', 'sql', 'init.sql');
-      const initSQL = fs.readFileSync(sqlPath, 'utf8');
+      let initSQL = fs.readFileSync(sqlPath, 'utf8');
 
-      // Execute the initialization script
+      // If we are already connected to a specific database, skip CREATE DATABASE/USE statements
+      const selectedDb = this.lastConfig?.database;
+      if (selectedDb) {
+        initSQL = initSQL
+          .replace(/\bCREATE\s+DATABASE\b[\s\S]*?;/gi, '')
+          .replace(/\bUSE\s+[`"']?[\w-]+[`"']?\s*;?/gi, '');
+      }
+
+      // Execute the initialization script (allowing multiple statements)
       const connection = await this.pool.getConnection();
-      const [results] = await connection.execute(initSQL);
+      await connection.query(initSQL);
       connection.release();
 
       // Get table statistics

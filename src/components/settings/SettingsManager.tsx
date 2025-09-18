@@ -227,7 +227,7 @@ export const SettingsManager: React.FC = () => {
       } else {
         toast({
           title: "Erro na inicialização",
-          description: result.message,
+          description: result.error || result.message,
           variant: "destructive",
         });
       }
