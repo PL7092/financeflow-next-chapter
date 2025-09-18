@@ -6,7 +6,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies for build)
+# Install ALL deps (including devDependencies) for build
 RUN npm ci
 
 # Copy source code
@@ -21,11 +21,14 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-# Install serve globally (if you only want to serve static React build)
-RUN npm install -g serve
+# Copy package.json to install runtime dependencies
+COPY package*.json ./
 
-# Create runtime directories (these will be overridden by volumes at runtime)
-RUN mkdir -p /app/uploads /app/config
+# Install only production dependencies (express, cors, dotenv, etc.)
+RUN npm ci --only=production
+
+# Install serve globally (for static assets if needed)
+RUN npm install -g serve
 
 # Copy build output
 COPY --from=builder /app/dist ./dist
@@ -33,18 +36,17 @@ COPY --from=builder /app/dist ./dist
 # Copy server files
 COPY server ./server
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S appuser -u 1001 -G nodejs && \
-    chown -R appuser:nodejs /app
+# Ensure folders exist (volumes will override them)
+RUN mkdir -p /app/uploads /app/config
 
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S appuser -u 1001 -G nodejs
+
+RUN chown -R appuser:nodejs /app
 USER appuser
 
 EXPOSE 3000
 
-# Health check
-#HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-#  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
-
-# Start the Node server (serves API + React app from ./dist)
+# Start the server (serves both API and React app)
 CMD ["node", "server/index.js"]
