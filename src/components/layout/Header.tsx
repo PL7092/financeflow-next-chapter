@@ -3,15 +3,11 @@ import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Bell, Menu, Settings, LogOut, User } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-
 interface HeaderProps {
   onToggleSidebar: () => void;
-  user: any;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, user }) => {
-  const { logout } = useAuth();
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
   return (
     <header className="bg-gradient-card border-b border-border shadow-sm">
@@ -27,7 +23,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, user }) => {
           </Button>
           <div className="hidden lg:block">
             <h1 className="text-xl font-semibold text-foreground">
-              Bem-vindo, {user?.name}
+              FinanceFlow
             </h1>
           </div>
         </div>
@@ -47,21 +43,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, user }) => {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    U
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
-              <div className="flex items-center justify-start gap-2 p-2">
-                <div className="flex flex-col space-y-1 leading-none">
-                  <p className="font-medium">{user?.name}</p>
-                  <p className="w-[200px] truncate text-sm text-muted-foreground">
-                    {user?.email}
-                  </p>
-                </div>
-              </div>
-              <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" />
                 <span>Perfil</span>
@@ -69,11 +56,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, user }) => {
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configurações</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Terminar Sessão</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
