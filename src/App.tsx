@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { ChatBot } from "@/components/chatbot/ChatBot";
+import { ChatBotToggle } from "@/components/chatbot/ChatBotToggle";
 import { FinanceProvider } from "./contexts/FinanceContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
@@ -25,6 +28,8 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
+  const [chatBotOpen, setChatBotOpen] = useState(false);
+
   return (
     <FinanceProvider>
       <div className="flex h-screen bg-background">
@@ -52,6 +57,10 @@ const AppContent = () => {
             </div>
           </main>
         </div>
+        
+        {/* ChatBot Components */}
+        <ChatBot isOpen={chatBotOpen} onToggle={() => setChatBotOpen(!chatBotOpen)} />
+        <ChatBotToggle isOpen={chatBotOpen} onToggle={() => setChatBotOpen(!chatBotOpen)} />
       </div>
     </FinanceProvider>
   );
