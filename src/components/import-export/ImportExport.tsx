@@ -283,7 +283,12 @@ export const ImportExport: React.FC = () => {
   };
 
   if (showWizard) {
-    return <TransactionImportWizard onClose={() => setShowWizard(false)} />;
+    return (
+      <div className="p-4 text-center">
+        <p>Importação inteligente temporariamente indisponível</p>
+        <Button onClick={() => setShowWizard(false)} className="mt-4">Voltar</Button>
+      </div>
+    );
   }
 
   return (
