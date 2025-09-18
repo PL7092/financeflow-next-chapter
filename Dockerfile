@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies - #-only=production
+RUN npm ci 
 
 # Copy source code
 COPY . .
@@ -18,10 +18,10 @@ RUN npm run build
 # Production stage  
 FROM node:18-alpine AS production
 
+WORKDIR /app
+
 # Install serve to run the built application
 RUN npm install -g serve
-
-WORKDIR /app
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
