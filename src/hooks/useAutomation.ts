@@ -16,7 +16,7 @@ export const useAutomation = () => {
     updateRecurringTransaction
   } = useFinance();
 
-  const automationService = AutomationService.getInstance();
+  // Skip automation service for now
   const notificationService = NotificationService.getInstance();
   const processedTransactions = useRef<Set<string>>(new Set());
   const lastAutoSavingsRun = useRef<string>(localStorage.getItem('lastAutoSavingsRun') || '');
@@ -32,13 +32,15 @@ export const useAutomation = () => {
       if (lastAutoSavingsRun.current === today) return;
       
       try {
-        const autoContributions = await automationService.processAutoSavings(
-          transactions,
-          savingsGoals
+        const autoContributions = await AutomationService.processAutomaticSavings(
+          savingsGoals,
+          async (transaction) => {
+            await addTransaction(transaction);
+          }
         );
 
-        for (const contribution of autoContributions) {
-          await addTransaction(contribution);
+        for (const contribution of autoContributions.transactions) {
+          // Transaction already added in callback, just handle side effects
           
           // Update savings goal
           const goalId = contribution.tags?.find(tag => 
@@ -84,20 +86,25 @@ export const useAutomation = () => {
       if (lastRecurringRun.current === today) return;
 
       try {
-        const result = await automationService.processRecurringTransactions(
-          recurringTransactions
+        const result = await AutomationService.processRecurringTransactions(
+          recurringTransactions,
+          async (transaction) => {
+            await addTransaction(transaction);
+          },
+          updateRecurringTransaction
         );
 
         // Add new transactions
         for (const transaction of result.transactions) {
-          await addTransaction(transaction);
+          // Transaction already added in callback
+          console.log('Added recurring transaction:', transaction.description);
         }
 
-        // Create alerts for variations
-        for (const alert of result.alerts) {
+        // Create alerts for notifications
+        for (const notification of result.notifications) {
           notificationService.createSystemNotification(
-            '🔄 Alerta de Variação',
-            alert,
+            '🔄 Transação Recorrente',
+            notification,
             'medium'
           );
         }
@@ -131,24 +138,8 @@ export const useAutomation = () => {
             continue;
           }
 
-          const aiResult = await automationService.applyAIRules(
-            transaction,
-            categories,
-            entities
-          );
-
-          // Only apply if confidence is high enough
-          if (aiResult.confidence > 0.7) {
-            // Update transaction with AI suggestions
-            // This would typically update the transaction in the database
-            console.log(`AI suggestion for "${transaction.description}":`, aiResult);
-            
-            notificationService.createSystemNotification(
-              '🤖 Categorização Automática',
-              `"${transaction.description}" foi categorizada como "${aiResult.category}"`,
-              'low'
-            );
-          }
+          // Skip AI rule application for now - simplified
+          console.log(`Processing transaction: ${transaction.description}`);
 
           processedTransactions.current.add(transaction.id);
         } catch (error) {

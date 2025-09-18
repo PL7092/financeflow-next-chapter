@@ -1,95 +1,102 @@
 import React, { useState, useMemo } from 'react';
-import { BarChart3, Download, Calendar, PieChart, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { Card } from '../ui/card';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Progress } from '../ui/progress';
 import { Badge } from '../ui/badge';
-import { formatDatePT, getDateRange, getCurrentMonthRange } from '../../utils/dateUtils';
+import { TrendingUp, TrendingDown, BarChart3, PieChart, Download, Calendar } from 'lucide-react';
+import { toast } from '../ui/use-toast';
 
 export const ReportsManager: React.FC = () => {
-  const { transactions, budgets, accounts, investments, savingsGoals } = useFinance();
+  const { transactions, investments, accounts, categories } = useFinance();
   const [selectedPeriod, setSelectedPeriod] = useState('thisMonth');
 
   const getDateRangeForPeriod = (period: string) => {
     const now = new Date();
+    const start = new Date();
+    const end = new Date();
+
     switch (period) {
       case 'thisMonth':
-        return getCurrentMonthRange();
-      case 'last3Months':
-        return getDateRange(3);
-      case 'last6Months':
-        return getDateRange(6);
+        start.setDate(1);
+        end.setMonth(end.getMonth() + 1, 0);
+        break;
+      case 'lastMonth':
+        start.setMonth(start.getMonth() - 1, 1);
+        end.setDate(0);
+        break;
       case 'thisYear':
-        return {
-          start: new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0],
-          end: now.toISOString().split('T')[0]
-        };
+        start.setMonth(0, 1);
+        end.setMonth(11, 31);
+        break;
+      case 'last3Months':
+        start.setMonth(start.getMonth() - 3, 1);
+        end.setDate(0);
+        break;
       default:
-        return getCurrentMonthRange();
+        start.setDate(1);
+        end.setMonth(end.getMonth() + 1, 0);
     }
+
+    return { start, end };
   };
 
-  const { start: dateStart, end: dateEnd } = getDateRangeForPeriod(selectedPeriod);
+  const { start: startDate, end: endDate } = getDateRangeForPeriod(selectedPeriod);
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => 
-      t.date >= dateStart && t.date <= dateEnd
-    );
-  }, [transactions, dateStart, dateEnd]);
+    return transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= startDate && transactionDate <= endDate;
+    });
+  }, [transactions, startDate, endDate]);
 
-  // Financial Summary
+  // Calculate summary
   const summary = useMemo(() => {
     const income = filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
-    
+
     const expenses = filteredTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const balance = income - expenses;
-    const savings = income > 0 ? (balance / income) * 100 : 0;
+    const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
 
-    return { income, expenses, balance, savings };
+    return { income, expenses, balance, savingsRate };
   }, [filteredTransactions]);
 
-  // Category Analysis
+  // Category breakdown
   const categoryBreakdown = useMemo(() => {
-    const breakdown = filteredTransactions.reduce((acc, t) => {
-      if (t.type === 'transfer') return acc;
+    const categoryTotals: { [key: string]: { income: number; expense: number } } = {};
+
+    filteredTransactions.forEach(t => {
+      const categoryName = categories.find(c => c.id === t.categoryId)?.name || 'Sem Categoria';
       
-      if (!acc[t.category]) {
-        acc[t.category] = { income: 0, expense: 0, total: 0 };
+      if (!categoryTotals[categoryName]) {
+        categoryTotals[categoryName] = { income: 0, expense: 0 };
       }
-      
+
       if (t.type === 'income') {
-        acc[t.category].income += t.amount;
-      } else {
-        acc[t.category].expense += t.amount;
+        categoryTotals[categoryName].income += t.amount;
+      } else if (t.type === 'expense') {
+        categoryTotals[categoryName].expense += t.amount;
       }
-      
-      acc[t.category].total += t.amount;
-      
-      return acc;
-    }, {} as Record<string, { income: number; expense: number; total: number }>);
+    });
 
-    return Object.entries(breakdown)
-      .map(([category, data]) => ({ category, ...data }))
-      .sort((a, b) => b.total - a.total);
-  }, [filteredTransactions]);
+    return categoryTotals;
+  }, [filteredTransactions, categories]);
 
-  // Account Balances
+  // Account balances
   const accountBalances = useMemo(() => {
     return accounts.map(account => {
       const accountTransactions = filteredTransactions.filter(t => 
-        t.account === account.name
+        t.accountId === account.id
       );
       
       const movement = accountTransactions.reduce((sum, t) => {
-        if (t.type === 'income') return sum + t.amount;
-        if (t.type === 'expense') return sum - t.amount;
-        return sum;
+        return t.type === 'income' ? sum + t.amount : sum - t.amount;
       }, 0);
 
       return {
@@ -98,466 +105,208 @@ export const ReportsManager: React.FC = () => {
         transactionCount: accountTransactions.length
       };
     });
-  }, [accounts, filteredTransactions]);
+  }, [filteredTransactions, accounts]);
 
-  // Investment Performance
+  // Investment summary
   const investmentSummary = useMemo(() => {
-    const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
-    const totalCurrentValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
-    const totalReturn = totalCurrentValue - totalInvested;
-    const totalReturnPercentage = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+    const totalInvested = investments.reduce((sum, inv) => sum + (inv.purchasePrice || 0), 0);
+    const totalCurrent = investments.reduce((sum, inv) => sum + (inv.currentValue || 0), 0);
+    const totalReturn = totalCurrent - totalInvested;
 
-    return { totalInvested, totalCurrentValue, totalReturn, totalReturnPercentage };
+    return { totalInvested, totalCurrent, totalReturn };
   }, [investments]);
 
-  // Savings Goals Progress
-  const savingsProgress = useMemo(() => {
-    return savingsGoals.map(goal => {
-      const progress = (goal.currentAmount / goal.targetAmount) * 100;
-      const remaining = goal.targetAmount - goal.currentAmount;
-      const daysRemaining = Math.ceil((new Date(goal.targetDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      
-      return {
-        ...goal,
-        progress,
-        remaining,
-        daysRemaining,
-        dailyTarget: daysRemaining > 0 ? remaining / daysRemaining : 0
-      };
-    }).sort((a, b) => b.progress - a.progress);
-  }, [savingsGoals]);
-
-  // AI Predictive Analysis
-  const predictiveAnalysis = useMemo(() => {
-    const recentTransactions = filteredTransactions.slice(0, 50);
-    const avgMonthlyIncome = summary.income;
-    const avgMonthlyExpenses = summary.expenses;
-    
-    // Predict next month's budget needs
-    const categoryPredictions = categoryBreakdown.map(cat => {
-      const trend = cat.expense > 0 ? 'increasing' : 'stable';
-      const predictedAmount = cat.expense * 1.05; // Simple 5% increase prediction
-      return {
-        category: cat.category,
-        predicted: predictedAmount,
-        trend,
-        confidence: 0.75
-      };
-    });
-
-    // Financial health score
-    const healthScore = Math.max(0, Math.min(100, 
-      (summary.savings * 2) + // Savings rate weight
-      (investmentSummary.totalReturnPercentage > 0 ? 20 : 0) + // Investment performance
-      (summary.balance > 0 ? 30 : 0) + // Positive balance
-      (categoryBreakdown.length > 3 ? 10 : 0) // Diversified spending
-    ));
-
-    return {
-      categoryPredictions,
-      healthScore,
-      recommendations: [
-        healthScore < 50 ? 'Considere reduzir despesas em categorias não essenciais' : null,
-        summary.savings < 10 ? 'Tente poupar pelo menos 10% da sua receita mensal' : null,
-        investmentSummary.totalReturnPercentage < 0 ? 'Revise a sua estratégia de investimento' : null,
-      ].filter(Boolean)
-    };
-  }, [filteredTransactions, summary, categoryBreakdown, investmentSummary]);
-
-  const exportAdvancedReport = () => {
-    const reportData = {
-      period: selectedPeriod,
-      dateRange: `${formatDatePT(dateStart)} - ${formatDatePT(dateEnd)}`,
-      summary,
-      categoryBreakdown,
-      accountBalances,
-      investmentSummary,
-      savingsProgress,
-      predictiveAnalysis,
-      transactionCount: filteredTransactions.length,
-      generatedAt: new Date().toISOString()
-    };
-
-    // Enhanced CSV with AI predictions
-    const csvContent = [
-      // Summary
-      ['RESUMO FINANCEIRO AVANÇADO'],
-      ['Período', reportData.dateRange],
-      ['Gerado em', new Date().toLocaleString('pt-PT')],
+  const exportReport = () => {
+    const csvData = [
+      ['Período', `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`],
       [''],
-      ['MÉTRICAS ATUAIS'],
+      ['RESUMO'],
       ['Receitas', `€${summary.income.toFixed(2)}`],
       ['Despesas', `€${summary.expenses.toFixed(2)}`],
       ['Saldo', `€${summary.balance.toFixed(2)}`],
-      ['Taxa de Poupança', `${summary.savings.toFixed(1)}%`],
-      ['Score de Saúde Financeira', `${predictiveAnalysis.healthScore.toFixed(0)}/100`],
+      ['Taxa de Poupança', `${summary.savingsRate.toFixed(2)}%`],
       [''],
-      
-      // AI Predictions
-      ['PREVISÕES INTELIGENTES'],
-      ['Categoria', 'Gasto Atual', 'Previsão Próximo Mês', 'Tendência', 'Confiança'],
-      ...predictiveAnalysis.categoryPredictions.map(pred => [
-        pred.category,
-        `€${categoryBreakdown.find(c => c.category === pred.category)?.expense.toFixed(2) || '0.00'}`,
-        `€${pred.predicted.toFixed(2)}`,
-        pred.trend === 'increasing' ? 'Crescente' : 'Estável',
-        `${(pred.confidence * 100).toFixed(0)}%`
-      ]),
-      [''],
-      
-      // Recommendations
-      ['RECOMENDAÇÕES INTELIGENTES'],
-      ...predictiveAnalysis.recommendations.map(rec => [rec]),
-      [''],
-      
-      // Category Breakdown
-      ['ANÁLISE POR CATEGORIA'],
-      ['Categoria', 'Receitas', 'Despesas', 'Total'],
-      ...categoryBreakdown.map(cat => [
-        cat.category,
-        `€${cat.income.toFixed(2)}`,
-        `€${cat.expense.toFixed(2)}`,
-        `€${cat.total.toFixed(2)}`
-      ]),
-      [''],
-      
-      // Account Balances
-      ['PERFORMANCE DAS CONTAS'],
-      ['Conta', 'Saldo Atual', 'Movimentação', 'Transações'],
-      ...accountBalances.map(acc => [
-        acc.name,
-        `€${acc.balance.toFixed(2)}`,
-        `€${acc.movement.toFixed(2)}`,
-        acc.transactionCount.toString()
-      ]),
-      [''],
-      
-      // Investment Analysis
-      ['ANÁLISE DE INVESTIMENTOS'],
-      ['Total Investido', `€${investmentSummary.totalInvested.toFixed(2)}`],
-      ['Valor Atual', `€${investmentSummary.totalCurrentValue.toFixed(2)}`],
-      ['Retorno', `€${investmentSummary.totalReturn.toFixed(2)}`],
-      ['Retorno %', `${investmentSummary.totalReturnPercentage.toFixed(2)}%`]
-    ].map(row => row.join(',')).join('\n');
+      ['CATEGORIAS'],
+      ['Categoria', 'Receitas', 'Despesas'],
+      ...Object.entries(categoryBreakdown).map(([category, amounts]) => [
+        category,
+        `€${amounts.income.toFixed(2)}`,
+        `€${amounts.expense.toFixed(2)}`
+      ])
+    ];
 
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio_avancado_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportJSONReport = () => {
-    const reportData = {
-      period: selectedPeriod,
-      dateRange: `${formatDatePT(dateStart)} - ${formatDatePT(dateEnd)}`,
-      summary,
-      categoryBreakdown,
-      accountBalances,
-      investmentSummary,
-      savingsProgress,
-      predictiveAnalysis,
-      transactionCount: filteredTransactions.length,
-      transactions: filteredTransactions,
-      generatedAt: new Date().toISOString()
-    };
-
-    const jsonContent = JSON.stringify(reportData, null, 2);
-    const blob = new Blob([jsonContent], { type: 'application/json' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `dados_completos_${new Date().toISOString().split('T')[0]}.json`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const getPeriodLabel = (period: string) => {
-    switch (period) {
-      case 'thisMonth': return 'Este Mês';
-      case 'last3Months': return 'Últimos 3 Meses';
-      case 'last6Months': return 'Últimos 6 Meses';
-      case 'thisYear': return 'Este Ano';
-      default: return 'Este Mês';
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `relatorio-${selectedPeriod}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
+
+    toast({
+      title: "Relatório Exportado",
+      description: "O relatório foi exportado com sucesso.",
+    });
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
+          <h1 className="text-2xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground">Análise detalhada das suas finanças</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="thisMonth">Este Mês</SelectItem>
+              <SelectItem value="lastMonth">Mês Passado</SelectItem>
               <SelectItem value="last3Months">Últimos 3 Meses</SelectItem>
-              <SelectItem value="last6Months">Últimos 6 Meses</SelectItem>
               <SelectItem value="thisYear">Este Ano</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex gap-2">
-            <Button onClick={exportAdvancedReport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
-            <Button onClick={exportJSONReport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar JSON
-            </Button>
-          </div>
+          <Button onClick={exportReport} className="flex items-center gap-2">
+            <Download size={16} />
+            Exportar
+          </Button>
         </div>
       </div>
 
-      {/* Period Info */}
-      <Card className="bg-gradient-card shadow-card">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              <span className="font-medium">Período: {getPeriodLabel(selectedPeriod)}</span>
-            </div>
-            <Badge variant="outline">
-              {formatDatePT(dateStart)} - {formatDatePT(dateEnd)}
-            </Badge>
-          </div>
-        </CardContent>
+      {/* Period Display */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          <span>Período: {startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}</span>
+        </div>
       </Card>
 
-      {/* Financial Summary */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Receitas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">€{summary.income.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              {filteredTransactions.filter(t => t.type === 'income').length} transações
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingDown className="h-4 w-4" />
-              Despesas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">€{summary.expenses.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              {filteredTransactions.filter(t => t.type === 'expense').length} transações
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Saldo
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${summary.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              €{summary.balance.toFixed(2)}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Receitas</p>
+              <p className="text-2xl font-bold text-green-600">€{summary.income.toFixed(2)}</p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {summary.balance >= 0 ? 'Superavit' : 'Déficit'}
-            </p>
-          </CardContent>
+            <TrendingUp className="h-8 w-8 text-green-600" />
+          </div>
         </Card>
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <PieChart className="h-4 w-4" />
-              Taxa Poupança
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${summary.savings >= 20 ? 'text-green-600' : summary.savings >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
-              {summary.savings.toFixed(1)}%
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Despesas</p>
+              <p className="text-2xl font-bold text-red-600">€{summary.expenses.toFixed(2)}</p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {summary.savings >= 20 ? 'Excelente' : summary.savings >= 10 ? 'Bom' : 'Melhorar'}
-            </p>
-          </CardContent>
+            <TrendingDown className="h-8 w-8 text-red-600" />
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Saldo</p>
+              <p className={`text-2xl font-bold ${summary.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                €{summary.balance.toFixed(2)}
+              </p>
+            </div>
+            <BarChart3 className="h-8 w-8" />
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Taxa Poupança</p>
+              <p className={`text-2xl font-bold ${summary.savingsRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {summary.savingsRate.toFixed(1)}%
+              </p>
+            </div>
+            <PieChart className="h-8 w-8" />
+          </div>
         </Card>
       </div>
 
       {/* Category Breakdown */}
-      <Card className="bg-gradient-card shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Análise por Categoria
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {categoryBreakdown.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">
-                Nenhuma transação no período selecionado
-              </p>
-            ) : (
-              categoryBreakdown.map((category, index) => {
-                const maxTotal = Math.max(...categoryBreakdown.map(c => c.total));
-                const percentage = (category.total / maxTotal) * 100;
-                
-                return (
-                  <div key={category.category} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{category.category}</span>
-                      <div className="text-right text-sm">
-                        <div className="font-medium">€{category.total.toFixed(2)}</div>
-                        {category.income > 0 && (
-                          <div className="text-green-600">+€{category.income.toFixed(2)}</div>
-                        )}
-                        {category.expense > 0 && (
-                          <div className="text-red-600">-€{category.expense.toFixed(2)}</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className="bg-gradient-primary h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Distribuição por Categoria</h3>
+        <div className="space-y-4">
+          {Object.entries(categoryBreakdown).map(([category, amounts]) => {
+            const total = amounts.expense || amounts.income;
+            const maxAmount = Math.max(...Object.values(categoryBreakdown).map(c => Math.max(c.income, c.expense)));
+            const percentage = maxAmount > 0 ? (total / maxAmount) * 100 : 0;
+
+            return (
+              <div key={category} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{category}</span>
+                  <div className="flex items-center gap-4 text-sm">
+                    {amounts.income > 0 && (
+                      <span className="text-green-600">+€{amounts.income.toFixed(2)}</span>
+                    )}
+                    {amounts.expense > 0 && (
+                      <span className="text-red-600">-€{amounts.expense.toFixed(2)}</span>
+                    )}
                   </div>
-                );
-              })
-            )}
-          </div>
-        </CardContent>
+                </div>
+                <Progress value={percentage} className="h-2" />
+              </div>
+            );
+          })}
+        </div>
       </Card>
 
-      {/* Account Performance and Investment Summary */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Account Performance */}
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle>Performance das Contas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {accountBalances.map((account) => (
-                <div key={account.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-                  <div>
-                    <div className="font-medium">{account.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {account.transactionCount} transação{account.transactionCount !== 1 ? 'ões' : ''}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">€{account.balance.toFixed(2)}</div>
-                    <div className={`text-sm ${account.movement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {account.movement >= 0 ? '+' : ''}€{account.movement.toFixed(2)}
-                    </div>
-                  </div>
+      {/* Account Performance and Investments */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Performance das Contas</h3>
+          <div className="space-y-4">
+            {accountBalances.map((account) => (
+              <div key={account.id} className="flex items-center justify-between p-3 border rounded">
+                <div>
+                  <p className="font-medium">{account.name}</p>
+                  <p className="text-sm text-muted-foreground">{account.transactionCount} transações</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
+                <div className="text-right">
+                  <p className={`font-medium ${account.movement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {account.movement >= 0 ? '+' : ''}€{account.movement.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Saldo: €{account.balance.toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
 
-        {/* Investment Summary */}
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle>Resumo de Investimentos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Investido</p>
-                  <p className="text-xl font-bold">€{investmentSummary.totalInvested.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Valor Atual</p>
-                  <p className="text-xl font-bold">€{investmentSummary.totalCurrentValue.toFixed(2)}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Retorno</p>
-                  <p className={`text-xl font-bold ${investmentSummary.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    €{investmentSummary.totalReturn.toFixed(2)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Retorno %</p>
-                  <p className={`text-xl font-bold flex items-center gap-1 ${investmentSummary.totalReturnPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {investmentSummary.totalReturnPercentage >= 0 ? (
-                      <TrendingUp className="h-4 w-4" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4" />
-                    )}
-                    {Math.abs(investmentSummary.totalReturnPercentage).toFixed(2)}%
-                  </p>
-                </div>
-              </div>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Resumo de Investimentos</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span>Total Investido</span>
+              <span className="font-medium">€{investmentSummary.totalInvested.toFixed(2)}</span>
             </div>
-          </CardContent>
+            <div className="flex items-center justify-between">
+              <span>Valor Atual</span>
+              <span className="font-medium">€{investmentSummary.totalCurrent.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Retorno</span>
+              <span className={`font-medium ${investmentSummary.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {investmentSummary.totalReturn >= 0 ? '+' : ''}€{investmentSummary.totalReturn.toFixed(2)}
+              </span>
+            </div>
+          </div>
         </Card>
       </div>
-
-      {/* Savings Goals Progress */}
-      {savingsProgress.length > 0 && (
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle>Progresso das Metas de Poupança</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {savingsProgress.map((goal) => (
-                <div key={goal.id} className="p-4 rounded-lg bg-background/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">{goal.name}</h4>
-                    <Badge variant={goal.progress >= 100 ? 'default' : 'secondary'}>
-                      {Math.min(goal.progress, 100).toFixed(1)}%
-                    </Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">€{goal.currentAmount.toFixed(2)}</span>
-                      <span className="text-muted-foreground">€{goal.targetAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          goal.progress >= 100 ? 'bg-green-500' : 'bg-gradient-primary'
-                        }`}
-                        style={{ width: `${Math.min(goal.progress, 100)}%` }}
-                      />
-                    </div>
-                    {goal.daysRemaining > 0 && goal.progress < 100 && (
-                      <div className="text-xs text-muted-foreground">
-                        €{goal.dailyTarget.toFixed(2)}/dia para atingir a meta
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

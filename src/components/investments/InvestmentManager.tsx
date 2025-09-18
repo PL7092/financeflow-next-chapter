@@ -28,7 +28,7 @@ export const InvestmentManager: React.FC = () => {
   };
 
   // Calculate totals
-  const totalInvested = investments.reduce((sum, inv) => sum + (inv.initialValue || 0), 0);
+  const totalInvested = investments.reduce((sum, inv) => sum + (inv.purchasePrice || 0), 0);
   const totalCurrent = investments.reduce((sum, inv) => sum + (inv.currentValue || 0), 0);
   const totalReturn = totalCurrent - totalInvested;
 
@@ -104,14 +104,14 @@ export const InvestmentManager: React.FC = () => {
                       <h4 className="font-medium">{investment.name}</h4>
                       <Badge variant="outline">{investment.type}</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{investment.description}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{investment.name}</p>
                   </div>
 
                   <div className="text-right mr-4">
                     <div className="flex items-center gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Inicial</p>
-                        <p className="font-medium">€{investment.initialValue?.toFixed(2) || '0.00'}</p>
+                        <p className="font-medium">€{investment.purchasePrice?.toFixed(2) || '0.00'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Atual</p>
