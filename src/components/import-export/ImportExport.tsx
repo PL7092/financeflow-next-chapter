@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Download, FileText, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { Upload, Download, FileText, AlertCircle, CheckCircle, Brain } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -8,6 +8,8 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Progress } from '../ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { TransactionImportWizard } from './TransactionImportWizard';
 
 interface ImportResult {
   success: boolean;
@@ -257,205 +259,230 @@ export const ImportExport: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Import Section */}
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Importar Dados
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Import Type Selection */}
-            <div className="space-y-2">
-              <Label>Tipo de Dados</Label>
-              <Select value={importType} onValueChange={setImportType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="transactions">Transações</SelectItem>
-                  <SelectItem value="budgets">Orçamentos</SelectItem>
-                  <SelectItem value="accounts">Contas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <Tabs defaultValue="import-smart" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="import-smart" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Importação Inteligente
+          </TabsTrigger>
+          <TabsTrigger value="import-basic" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Importação Básica
+          </TabsTrigger>
+          <TabsTrigger value="export" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Exportar
+          </TabsTrigger>
+        </TabsList>
 
-            {/* File Selection */}
-            <div className="space-y-2">
-              <Label>Arquivo CSV</Label>
-              <Input
-                type="file"
-                accept=".csv"
-                onChange={handleFileSelect}
-                disabled={isImporting}
-              />
-              {selectedFile && (
-                <p className="text-sm text-muted-foreground">
-                  Arquivo selecionado: {selectedFile.name}
-                </p>
-              )}
-            </div>
+        <TabsContent value="import-smart">
+          <TransactionImportWizard />
+        </TabsContent>
 
-            {/* Import Button */}
-            <Button 
-              onClick={handleImport} 
-              disabled={!selectedFile || isImporting}
-              className="w-full"
-            >
-              {isImporting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                  Importando...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar
-                </>
-              )}
-            </Button>
+        <TabsContent value="import-basic">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Import Section */}
+            <Card className="bg-gradient-card shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Importar Dados (Básico)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Import Type Selection */}
+                <div className="space-y-2">
+                  <Label>Tipo de Dados</Label>
+                  <Select value={importType} onValueChange={setImportType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="transactions">Transações</SelectItem>
+                      <SelectItem value="budgets">Orçamentos</SelectItem>
+                      <SelectItem value="accounts">Contas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* Import Progress */}
-            {isImporting && (
-              <div className="space-y-2">
-                <Progress value={50} className="w-full" />
-                <p className="text-sm text-muted-foreground text-center">
-                  Processando dados...
-                </p>
-              </div>
-            )}
+                {/* File Selection */}
+                <div className="space-y-2">
+                  <Label>Arquivo CSV</Label>
+                  <Input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileSelect}
+                    disabled={isImporting}
+                  />
+                  {selectedFile && (
+                    <p className="text-sm text-muted-foreground">
+                      Arquivo selecionado: {selectedFile.name}
+                    </p>
+                  )}
+                </div>
 
-            {/* Import Result */}
-            {importResult && (
-              <Alert className={importResult.success ? 'border-green-500' : 'border-red-500'}>
-                {importResult.success ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
+                {/* Import Button */}
+                <Button 
+                  onClick={handleImport} 
+                  disabled={!selectedFile || isImporting}
+                  className="w-full"
+                >
+                  {isImporting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Importar
+                    </>
+                  )}
+                </Button>
+
+                {/* Import Progress */}
+                {isImporting && (
+                  <div className="space-y-2">
+                    <Progress value={50} className="w-full" />
+                    <p className="text-sm text-muted-foreground text-center">
+                      Processando dados...
+                    </p>
+                  </div>
                 )}
+
+                {/* Import Result */}
+                {importResult && (
+                  <Alert className={importResult.success ? 'border-green-500' : 'border-red-500'}>
+                    {importResult.success ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    <AlertDescription>
+                      <div>
+                        <p className="font-medium">{importResult.message}</p>
+                        {importResult.errors.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-sm">Erros encontrados:</p>
+                            <ul className="text-sm list-disc list-inside">
+                              {importResult.errors.slice(0, 3).map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                              {importResult.errors.length > 3 && (
+                                <li>... e mais {importResult.errors.length - 3} erros</li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* CSV Format Info */}
+                <Alert>
+                  <FileText className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <p className="font-medium">Formato CSV esperado para {importType}:</p>
+                      {importType === 'transactions' && (
+                        <p className="text-sm">Data, Tipo, Descrição, Categoria, Conta, Valor, Tags</p>
+                      )}
+                      {importType === 'budgets' && (
+                        <p className="text-sm">Categoria, Limite, Gasto, Mês, Ano</p>
+                      )}
+                      {importType === 'accounts' && (
+                        <p className="text-sm">Nome, Tipo, Saldo, Moeda</p>
+                      )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="export">
+
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Exportar Dados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Exporte os seus dados financeiros em formato CSV para backup ou análise externa.
+              </p>
+
+              {/* Export Buttons */}
+              <div className="space-y-3">
+                <Button 
+                  onClick={exportTransactions} 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  disabled={transactions.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Transações ({transactions.length})
+                </Button>
+
+                <Button 
+                  onClick={exportBudgets} 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  disabled={budgets.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Orçamentos ({budgets.length})
+                </Button>
+
+                <Button 
+                  onClick={exportAccounts} 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  disabled={accounts.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Contas ({accounts.length})
+                </Button>
+              </div>
+
+              {/* Export Info */}
+              <Alert>
+                <FileText className="h-4 w-4" />
                 <AlertDescription>
                   <div>
-                    <p className="font-medium">{importResult.message}</p>
-                    {importResult.errors.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-sm">Erros encontrados:</p>
-                        <ul className="text-sm list-disc list-inside">
-                          {importResult.errors.slice(0, 3).map((error, index) => (
-                            <li key={index}>{error}</li>
-                          ))}
-                          {importResult.errors.length > 3 && (
-                            <li>... e mais {importResult.errors.length - 3} erros</li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
+                    <p className="font-medium">Informações sobre exportação:</p>
+                    <ul className="text-sm mt-2 space-y-1">
+                      <li>• Arquivos são exportados em formato CSV</li>
+                      <li>• Compatível com Excel, Google Sheets</li>
+                      <li>• Codificação UTF-8 para caracteres especiais</li>
+                      <li>• Dados atualizados até o momento da exportação</li>
+                    </ul>
                   </div>
                 </AlertDescription>
               </Alert>
-            )}
 
-            {/* CSV Format Info */}
-            <Alert>
-              <FileText className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-2">
-                  <p className="font-medium">Formato CSV esperado para {importType}:</p>
-                  {importType === 'transactions' && (
-                    <p className="text-sm">Data, Tipo, Descrição, Categoria, Conta, Valor, Tags</p>
-                  )}
-                  {importType === 'budgets' && (
-                    <p className="text-sm">Categoria, Limite, Gasto, Mês, Ano</p>
-                  )}
-                  {importType === 'accounts' && (
-                    <p className="text-sm">Nome, Tipo, Saldo, Moeda</p>
-                  )}
+              {/* Quick Actions */}
+              <div className="pt-4 border-t">
+                <p className="text-sm font-medium mb-3">Ações Rápidas</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Backup Completo
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Relatório Mensal
+                  </Button>
                 </div>
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-
-        {/* Export Section */}
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
-              Exportar Dados
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Exporte os seus dados financeiros em formato CSV para backup ou análise externa.
-            </p>
-
-            {/* Export Buttons */}
-            <div className="space-y-3">
-              <Button 
-                onClick={exportTransactions} 
-                variant="outline" 
-                className="w-full justify-start"
-                disabled={transactions.length === 0}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Transações ({transactions.length})
-              </Button>
-
-              <Button 
-                onClick={exportBudgets} 
-                variant="outline" 
-                className="w-full justify-start"
-                disabled={budgets.length === 0}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Orçamentos ({budgets.length})
-              </Button>
-
-              <Button 
-                onClick={exportAccounts} 
-                variant="outline" 
-                className="w-full justify-start"
-                disabled={accounts.length === 0}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Contas ({accounts.length})
-              </Button>
-            </div>
-
-            {/* Export Info */}
-            <Alert>
-              <FileText className="h-4 w-4" />
-              <AlertDescription>
-                <div>
-                  <p className="font-medium">Informações sobre exportação:</p>
-                  <ul className="text-sm mt-2 space-y-1">
-                    <li>• Arquivos são exportados em formato CSV</li>
-                    <li>• Compatível com Excel, Google Sheets</li>
-                    <li>• Codificação UTF-8 para caracteres especiais</li>
-                    <li>• Dados atualizados até o momento da exportação</li>
-                  </ul>
-                </div>
-              </AlertDescription>
-            </Alert>
-
-            {/* Quick Actions */}
-            <div className="pt-4 border-t">
-              <p className="text-sm font-medium mb-3">Ações Rápidas</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Backup Completo
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Relatório Mensal
-                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
