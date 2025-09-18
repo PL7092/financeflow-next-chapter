@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { useFinance } from '@/contexts/FinanceContext';
-import { Plus, Edit, Trash2, Tag, Building2, Zap, AlertCircle, Save } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import type { Category, Entity, AIRule } from '@/contexts/FinanceContext';
+import { useFinance } from '../../contexts/FinanceContext';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { useToast } from '../ui/use-toast';
+import { Plus, Edit, Trash2, Tag, Building2, Brain, Palette } from 'lucide-react';
+import type { Category, Entity, AIRule } from '../../contexts/FinanceContext';
 
 // Category Form Component
 const CategoryForm: React.FC<{
@@ -26,54 +21,36 @@ const CategoryForm: React.FC<{
     name: category?.name || '',
     type: category?.type || 'expense',
     color: category?.color || '#FF6B6B',
-    parentId: category?.parentId || '',
     icon: category?.icon || '',
-    keywords: category?.keywords?.join(', ') || '',
     isActive: category?.isActive ?? true,
   });
 
-  const { categories } = useFinance();
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const categoryData = {
-      ...formData,
-      keywords: formData.keywords ? formData.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
-      parentId: formData.parentId || undefined,
-    };
-
-    onSave(categoryData);
+    onSave(formData);
   };
-
-  // Get main categories (no parent) for subcategory selection
-  const mainCategories = categories.filter(c => c.type === formData.type && !c.parentId && c.id !== category?.id);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl" aria-describedby="category-form-description">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{category ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
         </DialogHeader>
-        <p id="category-form-description" className="sr-only">
-          Formulário para {category ? 'editar uma categoria existente' : 'criar uma nova categoria'} no sistema financeiro.
-        </p>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome da Categoria</Label>
+              <Label htmlFor="name">Nome *</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Nome da categoria"
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="type">Tipo</Label>
-              <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as 'income' | 'expense' }))}>
+              <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -83,83 +60,36 @@ const CategoryForm: React.FC<{
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="color">Cor</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="color"
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                  className="w-16 h-10"
-                />
-                <Input
-                  value={formData.color}
-                  onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                  placeholder="#FF6B6B"
-                />
-              </div>
+              <Input
+                id="color"
+                type="color"
+                value={formData.color}
+                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+              />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="icon">Ícone (opcional)</Label>
+              <Label htmlFor="icon">Ícone</Label>
               <Input
                 id="icon"
                 value={formData.icon}
-                onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
-                placeholder="shopping-cart"
+                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                placeholder="Nome do ícone"
               />
             </div>
-
-            {mainCategories.length > 0 && (
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="parentId">Categoria Principal (para criar subcategoria)</Label>
-                <Select value={formData.parentId || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, parentId: value === "none" ? "" : value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nenhuma - criar categoria principal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma - criar categoria principal</SelectItem>
-                    {mainCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="keywords">Palavras-chave para IA (separadas por vírgula)</Label>
-            <Textarea
-              id="keywords"
-              value={formData.keywords}
-              onChange={(e) => setFormData(prev => ({ ...prev, keywords: e.target.value }))}
-              placeholder="supermercado, alimentação, compras"
-              rows={2}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
-              />
-              <Label htmlFor="isActive">Categoria Ativa</Label>
-            </div>
-
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                <Save className="h-4 w-4 mr-2" />
-                {category ? 'Atualizar' : 'Criar'}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {category ? 'Salvar' : 'Criar'}
+            </Button>
           </div>
         </form>
       </DialogContent>
@@ -167,164 +97,65 @@ const CategoryForm: React.FC<{
   );
 };
 
-// Entity Form Component  
+// Entity Form Component
 const EntityForm: React.FC<{
   entity?: Entity | null;
   onClose: () => void;
   onSave: (entity: any) => void;
 }> = ({ entity, onClose, onSave }) => {
-  const [formData, setFormData] = useState({
+  const [entityFormData, setEntityFormData] = useState({
     name: entity?.name || '',
-    type: entity?.type || '',
-    aliases: entity?.aliases?.join(', ') || '',
-    defaultCategory: entity?.defaultCategory || '',
-    defaultSubcategory: entity?.defaultSubcategory || '',
-    notes: entity?.notes || '',
+    type: entity?.type || 'merchant',
     isActive: entity?.isActive ?? true,
   });
 
-  const { categories } = useFinance();
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const entityData = {
-      ...formData,
-      aliases: formData.aliases ? formData.aliases.split(',').map(a => a.trim()).filter(Boolean) : [],
-      defaultCategory: formData.defaultCategory || undefined,
-      defaultSubcategory: formData.defaultSubcategory || undefined,
-    };
-
-    onSave(entityData);
+    onSave(entityFormData);
   };
-
-  // Get main categories and subcategories
-  const mainCategories = categories.filter(c => c.isActive && !c.parentId);
-  const selectedMainCategory = mainCategories.find(c => c.name === formData.defaultCategory);
-  const subcategories = categories.filter(c => c.isActive && c.parentId === selectedMainCategory?.id);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl" aria-describedby="entity-form-description">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{entity ? 'Editar Entidade' : 'Nova Entidade'}</DialogTitle>
         </DialogHeader>
-        <p id="entity-form-description" className="sr-only">
-          Formulário para {entity ? 'editar uma entidade existente' : 'criar uma nova entidade'} no sistema financeiro.
-        </p>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome da Entidade</Label>
+              <Label htmlFor="name">Nome *</Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                value={entityFormData.name}
+                onChange={(e) => setEntityFormData({ ...entityFormData, name: e.target.value })}
+                placeholder="Nome da entidade"
                 required
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="type">Tipo</Label>
-              <Input
-                id="type"
-                value={formData.type}
-                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                placeholder="Supermercado, Banco, etc."
-                required
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="aliases">Nomes Alternativos (separados por vírgula)</Label>
-              <Input
-                id="aliases"
-                value={formData.aliases}
-                onChange={(e) => setFormData(prev => ({ ...prev, aliases: e.target.value }))}
-                placeholder="Continente, Cont., Continente Modelo"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="defaultCategory">Categoria Padrão</Label>
-              <Select value={formData.defaultCategory || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, defaultCategory: value === "none" ? "" : value, defaultSubcategory: "" }))}>
+              <Select value={entityFormData.type} onValueChange={(value) => setEntityFormData({ ...entityFormData, type: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {mainCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: category.color }}
-                        />
-                        {category.name}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="merchant">Comerciante</SelectItem>
+                  <SelectItem value="bank">Banco</SelectItem>
+                  <SelectItem value="employer">Empregador</SelectItem>
+                  <SelectItem value="government">Governo</SelectItem>
+                  <SelectItem value="other">Outro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            {subcategories.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="defaultSubcategory">Subcategoria Padrão</Label>
-                <Select value={formData.defaultSubcategory || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, defaultSubcategory: value === "none" ? "" : value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma subcategoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {subcategories.map((category) => (
-                      <SelectItem key={category.id} value={category.name}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: category.color }}
-                          />
-                          {category.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="Informações adicionais sobre a entidade"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
-              />
-              <Label htmlFor="isActive">Entidade Ativa</Label>
-            </div>
-
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                <Save className="h-4 w-4 mr-2" />
-                {entity ? 'Atualizar' : 'Criar'}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {entity ? 'Salvar' : 'Criar'}
+            </Button>
           </div>
         </form>
       </DialogContent>
@@ -334,187 +165,63 @@ const EntityForm: React.FC<{
 
 // AI Rule Form Component
 const AIRuleForm: React.FC<{
-  rule?: AIRule | null;
+  aiRule?: AIRule | null;
   onClose: () => void;
-  onSave: (rule: any) => void;
-}> = ({ rule, onClose, onSave }) => {
-  const [formData, setFormData] = useState({
-    name: rule?.name || '',
-    description: rule?.description || '',
-    condition: rule?.condition || '',
-    targetCategory: rule?.targetCategory || '',
-    targetSubcategory: rule?.targetSubcategory || '',
-    targetEntity: rule?.targetEntity || '',
-    confidence: rule?.confidence || 80,
-    priority: rule?.priority || 1,
-    isActive: rule?.isActive ?? true,
+  onSave: (aiRule: any) => void;
+}> = ({ aiRule, onClose, onSave }) => {
+  const [aiRuleFormData, setAiRuleFormData] = useState({
+    name: aiRule?.name || '',
+    description: aiRule?.description || '',
+    isActive: aiRule?.isActive ?? true,
   });
-
-  const { categories, entities } = useFinance();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const ruleData = {
-      ...formData,
-      confidence: formData.confidence / 100, // Convert percentage to decimal
-      targetCategory: formData.targetCategory || undefined,
-      targetSubcategory: formData.targetSubcategory || undefined,
-      targetEntity: formData.targetEntity || undefined,
+      ...aiRuleFormData,
+      conditions: [],
+      actions: [],
     };
-
+    
     onSave(ruleData);
   };
 
-  const mainCategories = categories.filter(c => c.isActive && !c.parentId);
-  const selectedMainCategory = mainCategories.find(c => c.name === formData.targetCategory);
-  const subcategories = categories.filter(c => c.isActive && c.parentId === selectedMainCategory?.id);
-
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl" aria-describedby="ai-rule-form-description">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{rule ? 'Editar Regra IA' : 'Nova Regra IA'}</DialogTitle>
+          <DialogTitle>{aiRule ? 'Editar Regra IA' : 'Nova Regra IA'}</DialogTitle>
         </DialogHeader>
-        <p id="ai-rule-form-description" className="sr-only">
-          Formulário para {rule ? 'editar uma regra de IA existente' : 'criar uma nova regra de IA'} no sistema financeiro.
-        </p>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome da Regra</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="priority">Prioridade (1-10)</Label>
-              <Input
-                id="priority"
-                type="number"
-                min="1"
-                max="10"
-                value={formData.priority}
-                onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) }))}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome *</Label>
+            <Input
+              id="name"
+              value={aiRuleFormData.name}
+              onChange={(e) => setAiRuleFormData({ ...aiRuleFormData, name: e.target.value })}
+              placeholder="Nome da regra"
+              required
+            />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
             <Input
               id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              value={aiRuleFormData.description}
+              onChange={(e) => setAiRuleFormData({ ...aiRuleFormData, description: e.target.value })}
               placeholder="Descrição da regra"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="condition">Condição</Label>
-            <Textarea
-              id="condition"
-              value={formData.condition}
-              onChange={(e) => setFormData(prev => ({ ...prev, condition: e.target.value }))}
-              placeholder="description contains 'netflix' OR entity equals 'Netflix'"
-              rows={3}
-              required
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="targetCategory">Categoria Alvo</Label>
-              <Select value={formData.targetCategory || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, targetCategory: value === "none" ? "" : value, targetSubcategory: "" }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {mainCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {subcategories.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="targetSubcategory">Subcategoria Alvo</Label>
-                <Select value={formData.targetSubcategory || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, targetSubcategory: value === "none" ? "" : value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {subcategories.map((category) => (
-                      <SelectItem key={category.id} value={category.name}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="targetEntity">Entidade Alvo</Label>
-              <Select value={formData.targetEntity || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, targetEntity: value === "none" ? "" : value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {entities.filter(e => e.isActive).map((entity) => (
-                    <SelectItem key={entity.id} value={entity.name}>
-                      {entity.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confidence">Confiança ({formData.confidence}%)</Label>
-            <Input
-              id="confidence"
-              type="range"
-              min="1"
-              max="100"
-              value={formData.confidence}
-              onChange={(e) => setFormData(prev => ({ ...prev, confidence: parseInt(e.target.value) }))}
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
-              />
-              <Label htmlFor="isActive">Regra Ativa</Label>
-            </div>
-
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                <Save className="h-4 w-4 mr-2" />
-                {rule ? 'Atualizar' : 'Criar'}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {aiRule ? 'Salvar' : 'Criar'}
+            </Button>
           </div>
         </form>
       </DialogContent>
@@ -522,465 +229,352 @@ const AIRuleForm: React.FC<{
   );
 };
 
-// Main DataManager Component
 export const DataManager: React.FC = () => {
-  const { categories, entities, aiRules, addCategory, updateCategory, addEntity, updateEntity, addAIRule, updateAIRule, deleteCategory, deleteEntity, deleteAIRule } = useFinance();
+  const { 
+    categories, addCategory, updateCategory, deleteCategory,
+    entities, addEntity, updateEntity, deleteEntity,
+    aiRules, addAIRule, updateAIRule, deleteAIRule
+  } = useFinance();
   const { toast } = useToast();
   
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [showEntityForm, setShowEntityForm] = useState(false);
-  const [showRuleForm, setShowRuleForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('categories');
+  
+  // Category state
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  
+  // Entity state
+  const [isEntityFormOpen, setIsEntityFormOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
-  const [editingRule, setEditingRule] = useState<AIRule | null>(null);
+  
+  // AI Rule state
+  const [isAIRuleFormOpen, setIsAIRuleFormOpen] = useState(false);
+  const [editingAIRule, setEditingAIRule] = useState<AIRule | null>(null);
 
-  const handleEditCategory = (category: Category) => {
-    setEditingCategory(category);
-    setShowCategoryForm(true);
-  };
-
-  const handleEditEntity = (entity: Entity) => {
-    setEditingEntity(entity);
-    setShowEntityForm(true);
-  };
-
-  const handleEditRule = (rule: AIRule) => {
-    setEditingRule(rule);
-    setShowRuleForm(true);
+  // Category handlers
+  const handleSaveCategory = async (categoryData: any) => {
+    try {
+      if (editingCategory) {
+        await updateCategory(editingCategory.id, categoryData);
+        toast({ title: "Sucesso", description: "Categoria atualizada com sucesso" });
+      } else {
+        await addCategory(categoryData);
+        toast({ title: "Sucesso", description: "Categoria criada com sucesso" });
+      }
+      setIsCategoryFormOpen(false);
+      setEditingCategory(null);
+    } catch (error) {
+      toast({ title: "Erro", description: "Erro ao salvar categoria", variant: "destructive" });
+    }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (window.confirm('Tem a certeza que deseja eliminar esta categoria?')) {
+    if (window.confirm('Tem certeza que deseja excluir esta categoria?')) {
       try {
         await deleteCategory(id);
-        toast({
-          title: "Categoria eliminada",
-          description: "A categoria foi eliminada com sucesso.",
-        });
+        toast({ title: "Sucesso", description: "Categoria excluída com sucesso" });
       } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível eliminar a categoria.",
-          variant: "destructive",
-        });
+        toast({ title: "Erro", description: "Erro ao excluir categoria", variant: "destructive" });
       }
+    }
+  };
+
+  // Entity handlers
+  const handleSaveEntity = async (entityData: any) => {
+    try {
+      if (editingEntity) {
+        await updateEntity(editingEntity.id, entityData);
+        toast({ title: "Sucesso", description: "Entidade atualizada com sucesso" });
+      } else {
+        await addEntity(entityData);
+        toast({ title: "Sucesso", description: "Entidade criada com sucesso" });
+      }
+      setIsEntityFormOpen(false);
+      setEditingEntity(null);
+    } catch (error) {
+      toast({ title: "Erro", description: "Erro ao salvar entidade", variant: "destructive" });
     }
   };
 
   const handleDeleteEntity = async (id: string) => {
-    if (window.confirm('Tem a certeza que deseja eliminar esta entidade?')) {
+    if (window.confirm('Tem certeza que deseja excluir esta entidade?')) {
       try {
         await deleteEntity(id);
-        toast({
-          title: "Entidade eliminada",
-          description: "A entidade foi eliminada com sucesso.",
-        });
+        toast({ title: "Sucesso", description: "Entidade excluída com sucesso" });
       } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível eliminar a entidade.",
-          variant: "destructive",
-        });
+        toast({ title: "Erro", description: "Erro ao excluir entidade", variant: "destructive" });
       }
     }
   };
 
-  const handleDeleteRule = async (id: string) => {
-    if (window.confirm('Tem a certeza que deseja eliminar esta regra?')) {
+  // AI Rule handlers
+  const handleSaveAIRule = async (aiRuleData: any) => {
+    try {
+      if (editingAIRule) {
+        await updateAIRule(editingAIRule.id, aiRuleData);
+        toast({ title: "Sucesso", description: "Regra IA atualizada com sucesso" });
+      } else {
+        await addAIRule(aiRuleData);
+        toast({ title: "Sucesso", description: "Regra IA criada com sucesso" });
+      }
+      setIsAIRuleFormOpen(false);
+      setEditingAIRule(null);
+    } catch (error) {
+      toast({ title: "Erro", description: "Erro ao salvar regra IA", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAIRule = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta regra IA?')) {
       try {
         await deleteAIRule(id);
-        toast({
-          title: "Regra eliminada",
-          description: "A regra foi eliminada com sucesso.",
-        });
+        toast({ title: "Sucesso", description: "Regra IA excluída com sucesso" });
       } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível eliminar a regra.",
-          variant: "destructive",
-        });
+        toast({ title: "Erro", description: "Erro ao excluir regra IA", variant: "destructive" });
       }
     }
   };
-
-  const handleCategoryFormSave = async (categoryData: any) => {
-    try {
-      if (editingCategory) {
-        await updateCategory(editingCategory.id, categoryData);
-      } else {
-        await addCategory(categoryData);
-      }
-      
-      setShowCategoryForm(false);
-      setEditingCategory(null);
-      toast({
-        title: editingCategory ? "Categoria atualizada" : "Categoria criada",
-        description: `A categoria foi ${editingCategory ? 'atualizada' : 'criada'} com sucesso.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível guardar a categoria.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEntityFormSave = async (entityData: any) => {
-    try {
-      if (editingEntity) {
-        await updateEntity(editingEntity.id, entityData);
-      } else {
-        await addEntity(entityData);
-      }
-      
-      setShowEntityForm(false);
-      setEditingEntity(null);
-      toast({
-        title: editingEntity ? "Entidade atualizada" : "Entidade criada",
-        description: `A entidade foi ${editingEntity ? 'atualizada' : 'criada'} com sucesso.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível guardar a entidade.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleRuleFormSave = async (ruleData: any) => {
-    try {
-      if (editingRule) {
-        await updateAIRule(editingRule.id, ruleData);
-      } else {
-        await addAIRule(ruleData);
-      }
-      
-      setShowRuleForm(false);
-      setEditingRule(null);
-      toast({
-        title: editingRule ? "Regra atualizada" : "Regra criada",
-        description: `A regra foi ${editingRule ? 'atualizada' : 'criada'} com sucesso.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível guardar a regra.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const activeCategories = categories.filter(c => c.isActive);
-  const inactiveCategories = categories.filter(c => !c.isActive);
-  const activeEntities = entities.filter(e => e.isActive);
-  const inactiveEntities = entities.filter(e => !e.isActive);
-  const activeRules = aiRules.filter(r => r.isActive);
-  const inactiveRules = aiRules.filter(r => !r.isActive);
-
-  // Separate main categories and subcategories
-  const mainCategories = activeCategories.filter(c => !c.parentId);
-  const subcategories = activeCategories.filter(c => c.parentId);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Gestão de Dados</h1>
-          <p className="text-muted-foreground">
-            Gerir categorias, subcategorias, entidades e regras de inteligência artificial
-          </p>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Gestão de Dados</h1>
       </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          As regras de IA e padrões de reconhecimento ajudam a categorizar automaticamente as transações.
-          Configure palavras-chave, aliases e condições para melhor precisão.
-        </AlertDescription>
-      </Alert>
-
-      <Tabs defaultValue="categories" className="space-y-4">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="categories">Categorias</TabsTrigger>
           <TabsTrigger value="entities">Entidades</TabsTrigger>
-          <TabsTrigger value="rules">Regras IA</TabsTrigger>
+          <TabsTrigger value="ai-rules">Regras IA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="categories" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Categorias e Subcategorias</h2>
-            <Button onClick={() => setShowCategoryForm(true)}>
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Categorias</h2>
+            <Button onClick={() => setIsCategoryFormOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nova Categoria
             </Button>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categories.map((category) => (
+              <Card key={category.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 rounded-full" 
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <CardTitle className="text-base">{category.name}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Tag className="h-4 w-4" />
+                    <span>{category.type === 'income' ? 'Receita' : 'Despesa'}</span>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingCategory(category);
+                        setIsCategoryFormOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteCategory(category.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {categories.length === 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Tag className="h-5 w-5" />
-                  Categorias Principais ({mainCategories.length})
-                </CardTitle>
-                <CardDescription>
-                  Categorias principais de despesas e receitas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {mainCategories.map((category) => {
-                    const categorySubcategories = subcategories.filter(s => s.parentId === category.id);
-                    return (
-                      <div key={category.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3">
-                            <div 
-                              className="w-4 h-4 rounded-full" 
-                              style={{ backgroundColor: category.color }}
-                            />
-                            <div>
-                              <span className="font-medium">{category.name}</span>
-                              <Badge variant={category.type === 'income' ? 'default' : 'secondary'} className="ml-2">
-                                {category.type === 'income' ? 'Receita' : 'Despesa'}
-                              </Badge>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditCategory(category)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteCategory(category.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        {categorySubcategories.length > 0 && (
-                          <div className="ml-7 space-y-2">
-                            <p className="text-sm text-muted-foreground">Subcategorias:</p>
-                            <div className="grid gap-2">
-                              {categorySubcategories.map((subcategory) => (
-                                <div key={subcategory.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                                  <div className="flex items-center gap-2">
-                                    <div 
-                                      className="w-3 h-3 rounded-full" 
-                                      style={{ backgroundColor: subcategory.color }}
-                                    />
-                                    <span className="text-sm">{subcategory.name}</span>
-                                  </div>
-                                  <div className="flex gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleEditCategory(subcategory)}
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDeleteCategory(subcategory.id)}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              <CardContent className="py-8 text-center">
+                <Palette className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma categoria encontrada</h3>
+                <p className="text-muted-foreground mb-4">
+                  Comece criando suas primeiras categorias.
+                </p>
+                <Button onClick={() => setIsCategoryFormOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeira Categoria
+                </Button>
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="entities" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Entidades</h2>
-            <Button onClick={() => setShowEntityForm(true)}>
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Entidades</h2>
+            <Button onClick={() => setIsEntityFormOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nova Entidade
             </Button>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {entities.map((entity) => (
+              <Card key={entity.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    <CardTitle className="text-base">{entity.name}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm text-muted-foreground">{entity.type}</p>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingEntity(entity);
+                        setIsEntityFormOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteEntity(entity.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {entities.length === 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Entidades Ativas ({activeEntities.length})
-                </CardTitle>
-                <CardDescription>
-                  Empresas, lojas e organizações que aparecem nas transações
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {activeEntities.map((entity) => (
-                    <div key={entity.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium">{entity.name}</span>
-                          <Badge variant="outline">{entity.type}</Badge>
-                        </div>
-                        {entity.defaultCategory && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Categoria padrão: {entity.defaultCategory}
-                            {entity.defaultSubcategory && ` → ${entity.defaultSubcategory}`}
-                          </p>
-                        )}
-                        {entity.aliases && entity.aliases.length > 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            Aliases: {entity.aliases.join(', ')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditEntity(entity)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteEntity(entity.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="py-8 text-center">
+                <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma entidade encontrada</h3>
+                <p className="text-muted-foreground mb-4">
+                  Comece criando suas primeiras entidades.
+                </p>
+                <Button onClick={() => setIsEntityFormOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeira Entidade
+                </Button>
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="rules" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Regras de IA</h2>
-            <Button onClick={() => setShowRuleForm(true)}>
+        <TabsContent value="ai-rules" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Regras IA</h2>
+            <Button onClick={() => setIsAIRuleFormOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Nova Regra
+              Nova Regra IA
             </Button>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aiRules.map((aiRule) => (
+              <Card key={aiRule.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5" />
+                    <CardTitle className="text-base">{aiRule.name}</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm text-muted-foreground">{aiRule.description}</p>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingAIRule(aiRule);
+                        setIsAIRuleFormOpen(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteAIRule(aiRule.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {aiRules.length === 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  Regras Ativas ({activeRules.length})
-                </CardTitle>
-                <CardDescription>
-                  Regras que ajudam a categorizar automaticamente as transações
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {activeRules.map((rule) => (
-                    <div key={rule.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline">Prioridade {rule.priority}</Badge>
-                          <span className="font-medium">{rule.name}</span>
-                          <Badge variant="secondary">{Math.round((rule.confidence || 0) * 100)}% confiança</Badge>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditRule(rule)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteRule(rule.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <p className="text-sm text-muted-foreground mb-2">{rule.description}</p>
-                      <p className="text-sm font-mono bg-muted p-2 rounded">{rule.condition}</p>
-                      
-                      <div className="flex gap-4 mt-2 text-sm">
-                        {rule.targetCategory && (
-                          <span>Categoria: <strong>{rule.targetCategory}</strong></span>
-                        )}
-                        {rule.targetSubcategory && (
-                          <span>Subcategoria: <strong>{rule.targetSubcategory}</strong></span>
-                        )}
-                        {rule.targetEntity && (
-                          <span>Entidade: <strong>{rule.targetEntity}</strong></span>
-                        )}
-                      </div>
-                      
-                      {rule.successRate && (
-                        <div className="mt-2">
-                          <Badge variant="default">{Math.round(rule.successRate * 100)}% sucesso</Badge>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="py-8 text-center">
+                <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma regra IA encontrada</h3>
+                <p className="text-muted-foreground mb-4">
+                  Comece criando suas primeiras regras IA.
+                </p>
+                <Button onClick={() => setIsAIRuleFormOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeira Regra IA
+                </Button>
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
       </Tabs>
 
-      {showCategoryForm && (
+      {/* Forms */}
+      {isCategoryFormOpen && (
         <CategoryForm
           category={editingCategory}
           onClose={() => {
-            setShowCategoryForm(false);
+            setIsCategoryFormOpen(false);
             setEditingCategory(null);
           }}
-          onSave={handleCategoryFormSave}
+          onSave={handleSaveCategory}
         />
       )}
 
-      {showEntityForm && (
+      {isEntityFormOpen && (
         <EntityForm
           entity={editingEntity}
           onClose={() => {
-            setShowEntityForm(false);
+            setIsEntityFormOpen(false);
             setEditingEntity(null);
           }}
-          onSave={handleEntityFormSave}
+          onSave={handleSaveEntity}
         />
       )}
 
-      {showRuleForm && (
+      {isAIRuleFormOpen && (
         <AIRuleForm
-          rule={editingRule}
+          aiRule={editingAIRule}
           onClose={() => {
-            setShowRuleForm(false);
-            setEditingRule(null);
+            setIsAIRuleFormOpen(false);
+            setEditingAIRule(null);
           }}
-          onSave={handleRuleFormSave}
+          onSave={handleSaveAIRule}
         />
       )}
     </div>

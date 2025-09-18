@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Upload, Download, FileText, AlertCircle, CheckCircle, Brain } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
-import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Alert, AlertDescription } from '../ui/alert';
-import { Progress } from '../ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Alert, AlertDescription } from '../ui/alert';
+import { useToast } from '../ui/use-toast';
+import { Upload, Download, FileText, AlertCircle } from 'lucide-react';
 import { TransactionImportWizard } from './TransactionImportWizard';
 
 interface ImportResult {
@@ -19,11 +19,16 @@ interface ImportResult {
 }
 
 export const ImportExport: React.FC = () => {
-  const { transactions, budgets, accounts, addTransaction, addBudget, addAccount } = useFinance();
-  const [importType, setImportType] = useState('transactions');
-  const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const { 
+    transactions, budgets, accounts, categories,
+    addTransaction, addBudget, addAccount 
+  } = useFinance();
+  const { toast } = useToast();
+  
+  const [selectedImportType, setSelectedImportType] = useState<string>('transactions');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -36,17 +41,19 @@ export const ImportExport: React.FC = () => {
   const parseCSV = (csvText: string): any[] => {
     const lines = csvText.split('\n').filter(line => line.trim());
     if (lines.length < 2) return [];
-
-    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-    const data = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.replace(/"/g, '').trim());
-      const obj: any = {};
+    
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const data = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+      const row: any = {};
       headers.forEach((header, index) => {
-        obj[header] = values[index] || '';
+        row[header] = values[index] || '';
       });
-      return obj;
-    });
-
+      data.push(row);
+    }
+    
     return data;
   };
 
@@ -56,16 +63,21 @@ export const ImportExport: React.FC = () => {
 
     for (const row of data) {
       try {
+        // Find first available account if none specified
+        const defaultAccount = accounts[0];
+        if (!defaultAccount) {
+          errors.push('Nenhuma conta disponível para importação');
+          continue;
+        }
+
         const transaction = {
-          type: (row.Tipo?.toLowerCase() === 'receita' ? 'income' : 
-                row.Tipo?.toLowerCase() === 'despesa' ? 'expense' : 
-                row.Tipo?.toLowerCase() === 'transferência' ? 'transfer' : 'expense') as 'income' | 'expense' | 'transfer',
-          amount: parseFloat(row.Valor || row.Amount || '0'),
-          description: row.Descrição || row.Description || 'Importado',
-          category: row.Categoria || row.Category || 'Outros',
-          account: row.Conta || row.Account || accounts[0]?.name || 'Conta Principal',
-          date: row.Data || row.Date || new Date().toISOString().split('T')[0],
-          tags: row.Tags ? row.Tags.split(';') : undefined
+          type: (row.type || row.Type || 'expense') as 'income' | 'expense' | 'transfer',
+          amount: parseFloat(row.amount || row.Amount || '0'),
+          description: row.description || row.Description || 'Importado',
+          categoryId: row.categoryId || row.CategoryId || undefined,
+          accountId: row.accountId || row.AccountId || defaultAccount.id,
+          date: row.date || row.Date || new Date().toISOString().split('T')[0],
+          tags: row.tags ? row.tags.split(',').map((tag: string) => tag.trim()) : [],
         };
 
         if (transaction.amount > 0 && transaction.description) {
@@ -94,14 +106,17 @@ export const ImportExport: React.FC = () => {
     for (const row of data) {
       try {
         const budget = {
-          category: row.Categoria || row.Category || '',
-          limit: parseFloat(row.Limite || row.Limit || '0'),
-          month: parseInt(row.Mês || row.Month || new Date().getMonth().toString()),
-          year: parseInt(row.Ano || row.Year || new Date().getFullYear().toString()),
-          spent: parseFloat(row.Gasto || row.Spent || '0')
+          name: row.name || row.Name || 'Orçamento Importado',
+          amount: parseFloat(row.amount || row.Amount || row.limit || row.Limit || '0'),
+          period: (row.period || row.Period || 'monthly') as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+          startDate: row.startDate || row.StartDate || new Date().toISOString().split('T')[0],
+          endDate: row.endDate || row.EndDate || new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0],
+          categoryId: row.categoryId || row.CategoryId || undefined,
+          isActive: true,
+          spent: 0,
         };
 
-        if (budget.category && budget.limit > 0) {
+        if (budget.amount > 0 && budget.name) {
           await addBudget(budget);
           importedCount++;
         } else {
@@ -127,10 +142,13 @@ export const ImportExport: React.FC = () => {
     for (const row of data) {
       try {
         const account = {
-          name: row.Nome || row.Name || '',
-          type: row.Tipo || row.Type || 'checking',
-          balance: parseFloat(row.Saldo || row.Balance || '0'),
-          currency: row.Moeda || row.Currency || 'EUR'
+          name: row.name || row.Name || 'Conta Importada',
+          type: (row.type || row.Type || 'other') as 'checking' | 'savings' | 'credit' | 'investment' | 'cash' | 'other',
+          balance: parseFloat(row.balance || row.Balance || '0'),
+          currency: row.currency || row.Currency || 'EUR',
+          bankName: row.bankName || row.BankName || undefined,
+          accountNumber: row.accountNumber || row.AccountNumber || undefined,
+          isActive: true,
         };
 
         if (account.name) {
@@ -153,18 +171,31 @@ export const ImportExport: React.FC = () => {
   };
 
   const handleImport = async () => {
-    if (!selectedFile) return;
-
-    setIsImporting(true);
-    setImportResult(null);
+    if (!selectedFile) {
+      toast({
+        title: "Erro",
+        description: "Selecione um arquivo para importar",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const fileText = await selectedFile.text();
-      const data = parseCSV(fileText);
+      const fileContent = await selectedFile.text();
+      const data = parseCSV(fileContent);
+      
+      if (data.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Arquivo CSV vazio ou inválido",
+          variant: "destructive",
+        });
+        return;
+      }
 
       let result: ImportResult;
       
-      switch (importType) {
+      switch (selectedImportType) {
         case 'transactions':
           result = await importTransactions(data);
           break;
@@ -175,66 +206,63 @@ export const ImportExport: React.FC = () => {
           result = await importAccounts(data);
           break;
         default:
-          result = { success: false, message: 'Tipo de importação não suportado', importedCount: 0, errors: [] };
+          throw new Error('Tipo de importação não suportado');
       }
 
       setImportResult(result);
+      
+      if (result.success) {
+        toast({
+          title: "Sucesso",
+          description: result.message,
+        });
+      } else {
+        toast({
+          title: "Aviso",
+          description: "Importação concluída com alguns erros",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      setImportResult({
-        success: false,
-        message: 'Erro ao processar arquivo',
-        importedCount: 0,
-        errors: [String(error)]
+      toast({
+        title: "Erro",
+        description: `Erro durante a importação: ${error}`,
+        variant: "destructive",
       });
-    } finally {
-      setIsImporting(false);
     }
   };
 
   const exportTransactions = () => {
     const csvContent = [
-      ['Data', 'Tipo', 'Descrição', 'Categoria', 'Conta', 'Valor', 'Tags'].join(','),
-      ...transactions.map(t => [
-        t.date,
-        t.type === 'income' ? 'Receita' : t.type === 'expense' ? 'Despesa' : 'Transferência',
-        t.description,
-        t.category,
-        t.account,
-        t.amount.toFixed(2),
-        (t.tags || []).join(';')
-      ].map(field => `"${field}"`).join(','))
+      'Type,Amount,Description,CategoryId,AccountId,Date,Tags',
+      ...transactions.map(transaction => 
+        `${transaction.type},${transaction.amount},"${transaction.description}",${transaction.categoryId},${transaction.accountId},${transaction.date},"${transaction.tags?.join(', ') || ''}"`
+      )
     ].join('\n');
-
-    downloadCSV(csvContent, 'transacoes.csv');
+    
+    downloadCSV(csvContent, 'transactions.csv');
   };
 
   const exportBudgets = () => {
     const csvContent = [
-      ['Categoria', 'Limite', 'Gasto', 'Mês', 'Ano'].join(','),
-      ...budgets.map(b => [
-        b.category,
-        b.limit.toFixed(2),
-        b.spent.toFixed(2),
-        b.month.toString(),
-        b.year.toString()
-      ].map(field => `"${field}"`).join(','))
+      'Name,Amount,Period,StartDate,EndDate,CategoryId,IsActive',
+      ...budgets.map(budget => 
+        `"${budget.name}",${budget.amount},${budget.period},${budget.startDate},${budget.endDate},${budget.categoryId},${budget.isActive}`
+      )
     ].join('\n');
-
-    downloadCSV(csvContent, 'orcamentos.csv');
+    
+    downloadCSV(csvContent, 'budgets.csv');
   };
 
   const exportAccounts = () => {
     const csvContent = [
-      ['Nome', 'Tipo', 'Saldo', 'Moeda'].join(','),
-      ...accounts.map(a => [
-        a.name,
-        a.type,
-        a.balance.toFixed(2),
-        a.currency
-      ].map(field => `"${field}"`).join(','))
+      'Name,Type,Balance,Currency,BankName,AccountNumber,IsActive',
+      ...accounts.map(account => 
+        `"${account.name}",${account.type},${account.balance},${account.currency},"${account.bankName || ''}","${account.accountNumber || ''}",${account.isActive}`
+      )
     ].join('\n');
-
-    downloadCSV(csvContent, 'contas.csv');
+    
+    downloadCSV(csvContent, 'accounts.csv');
   };
 
   const downloadCSV = (content: string, filename: string) => {
@@ -247,240 +275,179 @@ export const ImportExport: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    toast({
+      title: "Sucesso",
+      description: `Arquivo ${filename} baixado com sucesso`,
+    });
   };
+
+  if (showWizard) {
+    return <TransactionImportWizard onClose={() => setShowWizard(false)} />;
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Importar/Exportar</h1>
-          <p className="text-muted-foreground">Gerir dados financeiros - importar e exportar informações</p>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Importar/Exportar Dados</h1>
       </div>
 
-      <Tabs defaultValue="import-smart" className="space-y-6">
+      <Tabs defaultValue="smart-import" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="import-smart" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Importação Inteligente
-          </TabsTrigger>
-          <TabsTrigger value="import-basic" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Importação Básica
-          </TabsTrigger>
-          <TabsTrigger value="export" className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Exportar
-          </TabsTrigger>
+          <TabsTrigger value="smart-import">Smart Import</TabsTrigger>
+          <TabsTrigger value="basic-import">Importação Básica</TabsTrigger>
+          <TabsTrigger value="export">Exportação</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="import-smart">
-          <TransactionImportWizard />
+        <TabsContent value="smart-import" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Smart Import de Transações
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Use o assistente inteligente para importar e categorizar automaticamente suas transações.
+              </p>
+              <Button onClick={() => setShowWizard(true)}>
+                Iniciar Smart Import
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="import-basic">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Import Section */}
-            <Card className="bg-gradient-card shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Upload className="h-5 w-5" />
-                  Importar Dados (Básico)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Import Type Selection */}
-                <div className="space-y-2">
-                  <Label>Tipo de Dados</Label>
-                  <Select value={importType} onValueChange={setImportType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="transactions">Transações</SelectItem>
-                      <SelectItem value="budgets">Orçamentos</SelectItem>
-                      <SelectItem value="accounts">Contas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        <TabsContent value="basic-import" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Importação Básica
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="import-type">Tipo de Dados</Label>
+                <Select value={selectedImportType} onValueChange={setSelectedImportType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="transactions">Transações</SelectItem>
+                    <SelectItem value="budgets">Orçamentos</SelectItem>
+                    <SelectItem value="accounts">Contas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {/* File Selection */}
-                <div className="space-y-2">
-                  <Label>Arquivo CSV</Label>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileSelect}
-                    disabled={isImporting}
-                  />
-                  {selectedFile && (
-                    <p className="text-sm text-muted-foreground">
-                      Arquivo selecionado: {selectedFile.name}
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="file-upload">Arquivo CSV</Label>
+                <Input
+                  id="file-upload"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileSelect}
+                />
+              </div>
 
-                {/* Import Button */}
-                <Button 
-                  onClick={handleImport} 
-                  disabled={!selectedFile || isImporting}
-                  className="w-full"
-                >
-                  {isImporting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                      Importando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Importar
-                    </>
-                  )}
-                </Button>
+              <Button 
+                onClick={handleImport} 
+                disabled={!selectedFile}
+                className="w-full"
+              >
+                Importar Dados
+              </Button>
 
-                {/* Import Progress */}
-                {isImporting && (
-                  <div className="space-y-2">
-                    <Progress value={50} className="w-full" />
-                    <p className="text-sm text-muted-foreground text-center">
-                      Processando dados...
-                    </p>
-                  </div>
-                )}
-
-                {/* Import Result */}
-                {importResult && (
-                  <Alert className={importResult.success ? 'border-green-500' : 'border-red-500'}>
-                    {importResult.success ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4" />
-                    )}
-                    <AlertDescription>
-                      <div>
-                        <p className="font-medium">{importResult.message}</p>
-                        {importResult.errors.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-sm">Erros encontrados:</p>
-                            <ul className="text-sm list-disc list-inside">
-                              {importResult.errors.slice(0, 3).map((error, index) => (
-                                <li key={index}>{error}</li>
-                              ))}
-                              {importResult.errors.length > 3 && (
-                                <li>... e mais {importResult.errors.length - 3} erros</li>
-                              )}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {/* CSV Format Info */}
-                <Alert>
-                  <FileText className="h-4 w-4" />
+              {importResult && (
+                <Alert className={importResult.success ? "border-green-200" : "border-red-200"}>
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    <div className="space-y-2">
-                      <p className="font-medium">Formato CSV esperado para {importType}:</p>
-                      {importType === 'transactions' && (
-                        <p className="text-sm">Data, Tipo, Descrição, Categoria, Conta, Valor, Tags</p>
-                      )}
-                      {importType === 'budgets' && (
-                        <p className="text-sm">Categoria, Limite, Gasto, Mês, Ano</p>
-                      )}
-                      {importType === 'accounts' && (
-                        <p className="text-sm">Nome, Tipo, Saldo, Moeda</p>
+                    <div>
+                      <p className="font-medium">{importResult.message}</p>
+                      {importResult.errors.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium">Erros encontrados:</p>
+                          <ul className="text-sm list-disc list-inside">
+                            {importResult.errors.slice(0, 5).map((error, index) => (
+                              <li key={index}>{error}</li>
+                            ))}
+                            {importResult.errors.length > 5 && (
+                              <li>... e mais {importResult.errors.length - 5} erros</li>
+                            )}
+                          </ul>
+                        </div>
                       )}
                     </div>
                   </AlertDescription>
                 </Alert>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="export">
-
-          <Card className="bg-gradient-card shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Download className="h-5 w-5" />
-                Exportar Dados
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Exporte os seus dados financeiros em formato CSV para backup ou análise externa.
-              </p>
-
-              {/* Export Buttons */}
-              <div className="space-y-3">
+        <TabsContent value="export" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Transações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {transactions.length} transações disponíveis
+                </p>
                 <Button 
                   onClick={exportTransactions} 
                   variant="outline" 
-                  className="w-full justify-start"
+                  className="w-full"
                   disabled={transactions.length === 0}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Exportar Transações ({transactions.length})
+                  Exportar
                 </Button>
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Orçamentos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {budgets.length} orçamentos disponíveis
+                </p>
                 <Button 
                   onClick={exportBudgets} 
                   variant="outline" 
-                  className="w-full justify-start"
+                  className="w-full"
                   disabled={budgets.length === 0}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Exportar Orçamentos ({budgets.length})
+                  Exportar
                 </Button>
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Contas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {accounts.length} contas disponíveis
+                </p>
                 <Button 
                   onClick={exportAccounts} 
                   variant="outline" 
-                  className="w-full justify-start"
+                  className="w-full"
                   disabled={accounts.length === 0}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Exportar Contas ({accounts.length})
+                  Exportar
                 </Button>
-              </div>
-
-              {/* Export Info */}
-              <Alert>
-                <FileText className="h-4 w-4" />
-                <AlertDescription>
-                  <div>
-                    <p className="font-medium">Informações sobre exportação:</p>
-                    <ul className="text-sm mt-2 space-y-1">
-                      <li>• Arquivos são exportados em formato CSV</li>
-                      <li>• Compatível com Excel, Google Sheets</li>
-                      <li>• Codificação UTF-8 para caracteres especiais</li>
-                      <li>• Dados atualizados até o momento da exportação</li>
-                    </ul>
-                  </div>
-                </AlertDescription>
-              </Alert>
-
-              {/* Quick Actions */}
-              <div className="pt-4 border-t">
-                <p className="text-sm font-medium mb-3">Ações Rápidas</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Backup Completo
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Relatório Mensal
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
