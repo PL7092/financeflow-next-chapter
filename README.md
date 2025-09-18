@@ -144,26 +144,45 @@ services:
 
 ## 🔄 Atualização da Aplicação
 
+### Como Funciona o Processo de Atualização
+
+Quando são feitas alterações ao código no **GitHub**, é necessário atualizar a imagem Docker e reiniciar o container no Unraid para aplicar as mudanças. O processo segue estes passos:
+
+1. **Código atualizado no GitHub** → 2. **Build nova imagem Docker** → 3. **Atualizar container no Unraid**
+
 ### Método 1: Via Unraid Interface (Recomendado)
 
-1. Aceda ao **Docker** tab no Unraid
-2. Localize o container "personal-finance"
-3. Clique em **Update Container**
-4. O sistema irá descarregar automaticamente a versão mais recente
+**Passo a passo para atualizar após mudanças no GitHub:**
 
-### Método 2: Via Linha de Comandos
+1. Aceda ao **Docker** tab no Unraid WebUI
+2. Localize o container "personal-finance" 
+3. Clique no ícone do container e selecione **Force Update**
+4. Confirme a atualização - o sistema irá:
+   - Parar o container atual
+   - Descarregar a imagem mais recente do Docker Hub
+   - Recriar o container com a nova versão
+   - Manter todos os dados nos volumes persistentes
+
+> **Nota**: Se não vir atualizações imediatamente, pode ser necessário aguardar que a nova imagem seja construída e publicada no Docker Hub (processo automático via GitHub Actions).
+
+### Método 2: Via Linha de Comandos SSH
+
+Conecte-se ao Unraid via SSH e execute:
 
 ```bash
-# Parar o container
+# 1. Parar o container
 docker stop personal-finance
 
-# Remover o container (os dados permanecem nos volumes)
+# 2. Remover o container (dados permanecem seguros nos volumes)
 docker rm personal-finance
 
-# Descarregar a imagem mais recente
+# 3. Remover a imagem antiga (força download da nova versão)
+docker rmi [seu-dockerhub-username]/personal-finance:latest
+
+# 4. Descarregar a imagem mais recente do GitHub
 docker pull [seu-dockerhub-username]/personal-finance:latest
 
-# Recriar o container com a nova imagem
+# 5. Recriar o container com a nova imagem
 docker run -d \
   --name=personal-finance \
   --net=bridge \
@@ -173,14 +192,75 @@ docker run -d \
   [seu-dockerhub-username]/personal-finance:latest
 ```
 
-### Método 3: Webhook Automático (Avançado)
+### Método 3: Atualização Automática com Watchtower
 
-Configure um webhook no GitHub para atualizações automáticas:
+Instale o Watchtower para atualizações automáticas:
 
-1. Instale o plugin **Webhook** no Unraid
-2. Configure o endpoint: `http://[IP_UNRAID]:9000/hooks/update-finance`
-3. No GitHub, adicione o webhook URL nas definições do repositório
-4. As atualizações serão aplicadas automaticamente após cada commit
+```bash
+docker run -d \
+  --name watchtower \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  containrrr/watchtower \
+  --schedule "0 2 * * *" \
+  --cleanup \
+  personal-finance
+```
+
+Isto irá verificar atualizações diariamente às 2:00 da manhã.
+
+### Método 4: Webhook com GitHub Actions (Avançado)
+
+Para atualizações instantâneas após commits no GitHub:
+
+**1. No Unraid, instale o Webhook plugin:**
+- Community Applications > Webhook
+- Configure endpoint: `http://[IP_UNRAID]:9000/hooks/update-finance`
+
+**2. Crie script de atualização (`/boot/config/scripts/update-finance.sh`):**
+```bash
+#!/bin/bash
+docker stop personal-finance
+docker rm personal-finance
+docker rmi [seu-dockerhub-username]/personal-finance:latest
+docker pull [seu-dockerhub-username]/personal-finance:latest
+docker run -d \
+  --name=personal-finance \
+  --net=bridge \
+  -p 8080:80 \
+  -v /mnt/user/appdata/personal-finance:/app \
+  --restart unless-stopped \
+  [seu-dockerhub-username]/personal-finance:latest
+```
+
+**3. No GitHub, adicione webhook:**
+- Settings > Webhooks > Add webhook
+- URL: `http://[IP_UNRAID]:9000/hooks/update-finance`
+- Content type: `application/json`
+- Events: `Just the push event`
+
+### Verificar se a Atualização foi Bem-sucedida
+
+Após qualquer método de atualização:
+
+1. Verifique se o container está a correr: **Docker tab > personal-finance > Status: Started**
+2. Aceda à aplicação: `http://[IP_UNRAID]:8080`
+3. Verifique a versão na página de configurações
+4. Confirme que as novas funcionalidades estão disponíveis
+
+### Resolução de Problemas de Atualização
+
+Se a atualização falhar:
+
+```bash
+# Verificar logs do container
+docker logs personal-finance
+
+# Verificar se a imagem foi descarregada
+docker images | grep personal-finance
+
+# Reiniciar o container manualmente
+docker restart personal-finance
+```
 
 ## 🛠 Desenvolvimento Local
 
