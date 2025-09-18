@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
+import { useToast } from '../ui/use-toast';
 
 export const SettingsManager: React.FC = () => {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
 
   // Profile Settings
@@ -74,6 +76,7 @@ export const SettingsManager: React.FC = () => {
 
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'failed'>('untested');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleProfileSave = () => {
     // In a real app, this would call the backend API
@@ -112,11 +115,43 @@ export const SettingsManager: React.FC = () => {
     // In production: await saveAiSettings(aiSettings);
   };
 
-  const handleDatabaseSave = () => {
-    // Save database settings (encrypted)
-    localStorage.setItem('dbSettings', JSON.stringify(dbSettings));
-    console.log('Saving database settings:', dbSettings);
-    // In production: await saveDatabaseSettings(dbSettings);
+  const handleDatabaseSave = async () => {
+    setIsSaving(true);
+    try {
+      // Save database settings securely in production
+      console.log('Saving database settings:', dbSettings);
+      
+      // In production, this should call a secure API endpoint
+      // await saveDatabaseSettings(dbSettings);
+      
+      // For now, save to localStorage with encryption consideration
+      localStorage.setItem('dbSettings', JSON.stringify(dbSettings));
+      
+      // Show success notification
+      console.log('Database settings saved successfully');
+      
+      // Show toast notification
+      toast({
+        title: "Configurações guardadas",
+        description: "As configurações da base de dados foram guardadas com sucesso!",
+      });
+      
+      // In a real production environment, you would:
+      // 1. Send settings to your backend API
+      // 2. Backend validates and stores securely
+      // 3. Backend updates app configuration
+      // 4. Return success/error response
+      
+    } catch (error) {
+      console.error('Failed to save database settings:', error);
+      toast({
+        title: "Erro ao guardar",
+        description: "Ocorreu um erro ao guardar as configurações. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const testDatabaseConnection = async () => {
@@ -804,9 +839,22 @@ export const SettingsManager: React.FC = () => {
                     )}
                   </div>
 
-                  <Button onClick={handleDatabaseSave} className="w-full md:w-auto">
-                    <Save className="h-4 w-4 mr-2" />
-                    Guardar Configurações
+                  <Button 
+                    onClick={handleDatabaseSave} 
+                    className="w-full md:w-auto"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Guardar Configurações
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
