@@ -94,21 +94,15 @@ services:
       retries: 10
 
   app:
-    image: node:18-alpine
+    build:
+      context: https://github.com/PL7092/financeflow-next-chapter.git
+      dockerfile: Dockerfile
+    image: personal-finance:latest
     container_name: personal-finance-app
     restart: unless-stopped
-    working_dir: /app
-    command: sh -c "
-      if [ ! -d '.git' ]; then
-        git clone https://github.com/PL7092/financeflow-next-chapter.git . &&
-        npm install &&
-        npm run build
-      fi &&
-      npm start"
     ports:
       - "3000:3000"
     volumes:
-      - /mnt/user/appdata/personal-finance/app:/app
       - /mnt/user/appdata/personal-finance/uploads:/app/uploads
     environment:
       NODE_ENV: production
@@ -118,6 +112,7 @@ services:
       DB_USER: finance_user
       DB_PASSWORD: finance_user_password_2024
       DB_SSL: false
+      UPLOAD_DIR: /app/uploads
     networks:
       - finance-network
     depends_on:
@@ -167,7 +162,6 @@ docker logs personal-finance-db
 ```bash
 # Os dados ficam guardados em:
 # /mnt/user/appdata/personal-finance/mariadb (base de dados)
-# /mnt/user/appdata/personal-finance/app (código e configurações)
 # /mnt/user/appdata/personal-finance/uploads (ficheiros enviados)
 ```
 
