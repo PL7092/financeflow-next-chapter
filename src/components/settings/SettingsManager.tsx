@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, User, Bell, Shield, Palette, Database, Download, Trash2, Save, AlertCircle, Brain, FileText, TestTube, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -14,6 +14,13 @@ import { useToast } from '../ui/use-toast';
 export const SettingsManager: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
+
+  // Load database stats on component mount
+  useEffect(() => {
+    if (activeTab === 'database') {
+      loadDatabaseStats();
+    }
+  }, [activeTab]);
 
   // Profile Settings
   const [profileData, setProfileData] = useState({
@@ -64,11 +71,11 @@ export const SettingsManager: React.FC = () => {
 
   // Database Settings
   const [dbSettings, setDbSettings] = useState({
-    host: 'localhost',
+    host: 'mariadb',
     port: '3306',
-    database: 'financeflow',
-    username: 'root',
-    password: '',
+    database: 'personal_finance',
+    username: 'finance_user',
+    password: 'finance_user_password_2024',
     useSSL: false,
     connectionTimeout: 30,
     maxConnections: 10,
@@ -77,6 +84,9 @@ export const SettingsManager: React.FC = () => {
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'failed'>('untested');
   const [isSaving, setIsSaving] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [dbStats, setDbStats] = useState<any>(null);
 
   const handleProfileSave = () => {
     // In a real app, this would call the backend API
@@ -159,25 +169,139 @@ export const SettingsManager: React.FC = () => {
     setConnectionStatus('untested');
     
     try {
-      // Simulate API call to test connection
-      console.log('Testing database connection with:', dbSettings);
+      const response = await fetch('/api/db/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dbSettings),
+      });
       
-      // Mock delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await response.json();
       
-      // Mock result (in production: await testDbConnection(dbSettings))
-      const success = dbSettings.host && dbSettings.database && dbSettings.username;
-      
-      if (success) {
+      if (result.success) {
         setConnectionStatus('success');
+        toast({
+          title: "Ligação bem-sucedida",
+          description: `Ligação estabelecida em ${result.latency}`,
+        });
       } else {
         setConnectionStatus('failed');
+        toast({
+          title: "Falha na ligação",
+          description: result.message,
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Connection test failed:', error);
       setConnectionStatus('failed');
+      toast({
+        title: "Erro ao testar ligação",
+        description: "Verifique se o servidor está a funcionar",
+        variant: "destructive",
+      });
     } finally {
       setTestingConnection(false);
+    }
+  };
+
+  const initializeDatabase = async () => {
+    setIsInitializing(true);
+    
+    try {
+      const response = await fetch('/api/db/init', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Schema inicializado",
+          description: `${result.tables?.totalTables || 0} tabelas criadas`,
+        });
+        await loadDatabaseStats();
+      } else {
+        toast({
+          title: "Erro na inicialização",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Schema initialization failed:', error);
+      toast({
+        title: "Erro ao inicializar",
+        description: "Verifique a ligação à base de dados",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  const loadDatabaseStats = async () => {
+    try {
+      const response = await fetch('/api/db/stats');
+      const result = await response.json();
+      
+      if (result.success) {
+        setDbStats(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to load database stats:', error);
+    }
+  };
+
+  const importLocalData = async () => {
+    setIsImporting(true);
+    
+    try {
+      // Get data from FinanceContext - this would need to be passed as prop
+      // For now, we'll use mock data
+      const localData = {
+        categories: JSON.parse(localStorage.getItem('categories') || '[]'),
+        accounts: JSON.parse(localStorage.getItem('accounts') || '[]'),
+        transactions: JSON.parse(localStorage.getItem('transactions') || '[]'),
+        budgets: JSON.parse(localStorage.getItem('budgets') || '[]'),
+      };
+      
+      const response = await fetch('/api/db/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(localData),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Dados importados",
+          description: `${Object.values(result.results).reduce((a: number, b: number) => a + b, 0)} registos importados`,
+        });
+        await loadDatabaseStats();
+      } else {
+        toast({
+          title: "Erro na importação",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Data import failed:', error);
+      toast({
+        title: "Erro ao importar",
+        description: "Verifique a ligação à base de dados",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -690,7 +814,7 @@ export const SettingsManager: React.FC = () => {
                 <Alert>
                   <Database className="h-4 w-4" />
                   <AlertDescription>
-                    Configure aqui a ligação ao seu contentor MariaDB no Unraid. 
+                    Configure aqui a ligação ao seu contentor MariaDB no Docker. 
                     Certifique-se que as credenciais estão corretas antes de testar a ligação.
                   </AlertDescription>
                 </Alert>
@@ -703,7 +827,7 @@ export const SettingsManager: React.FC = () => {
                         id="db-host"
                         value={dbSettings.host}
                         onChange={(e) => setDbSettings(prev => ({ ...prev, host: e.target.value }))}
-                        placeholder="localhost ou IP do servidor"
+                        placeholder="mariadb ou IP do servidor"
                       />
                     </div>
 
@@ -723,7 +847,7 @@ export const SettingsManager: React.FC = () => {
                         id="db-name"
                         value={dbSettings.database}
                         onChange={(e) => setDbSettings(prev => ({ ...prev, database: e.target.value }))}
-                        placeholder="financeflow"
+                        placeholder="personal_finance"
                       />
                     </div>
 
@@ -733,7 +857,7 @@ export const SettingsManager: React.FC = () => {
                         id="db-username"
                         value={dbSettings.username}
                         onChange={(e) => setDbSettings(prev => ({ ...prev, username: e.target.value }))}
-                        placeholder="root"
+                        placeholder="finance_user"
                       />
                     </div>
 
@@ -802,28 +926,72 @@ export const SettingsManager: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    <Button 
-                      onClick={testDatabaseConnection} 
-                      variant="outline"
-                      disabled={testingConnection}
-                      className="flex-1 md:flex-none"
-                    >
-                      {testingConnection ? (
-                        <>
-                          <TestTube className="h-4 w-4 mr-2 animate-spin" />
-                          Testando...
-                        </>
-                      ) : (
-                        <>
-                          <TestTube className="h-4 w-4 mr-2" />
-                          Testar Ligação
-                        </>
-                      )}
-                    </Button>
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Gestão da Base de Dados</h4>
+                    
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Button 
+                        onClick={testDatabaseConnection} 
+                        variant="outline"
+                        disabled={testingConnection}
+                        className="flex-1"
+                      >
+                        {testingConnection ? (
+                          <>
+                            <TestTube className="h-4 w-4 mr-2 animate-spin" />
+                            Testando...
+                          </>
+                        ) : (
+                          <>
+                            <TestTube className="h-4 w-4 mr-2" />
+                            Testar Ligação
+                          </>
+                        )}
+                      </Button>
+
+                      <Button 
+                        onClick={initializeDatabase} 
+                        variant="outline"
+                        disabled={isInitializing}
+                        className="flex-1"
+                      >
+                        {isInitializing ? (
+                          <>
+                            <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            Inicializando...
+                          </>
+                        ) : (
+                          <>
+                            <Database className="h-4 w-4 mr-2" />
+                            Inicializar Tabelas
+                          </>
+                        )}
+                      </Button>
+
+                      <Button 
+                        onClick={importLocalData} 
+                        variant="outline"
+                        disabled={isImporting}
+                        className="flex-1"
+                      >
+                        {isImporting ? (
+                          <>
+                            <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            Importando...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4 mr-2" />
+                            Importar Dados
+                          </>
+                        )}
+                      </Button>
+                    </div>
 
                     {connectionStatus !== 'untested' && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 p-3 rounded-lg border">
                         {connectionStatus === 'success' ? (
                           <>
                             <CheckCircle className="h-4 w-4 text-green-600" />
@@ -835,6 +1003,34 @@ export const SettingsManager: React.FC = () => {
                             <span className="text-sm text-red-600">Falha na ligação</span>
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {dbStats && (
+                      <div className="p-4 rounded-lg border bg-muted/50">
+                        <h5 className="text-sm font-medium mb-2">Estatísticas da Base de Dados</h5>
+                        <div className="grid gap-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Tabelas:</span>
+                            <span>{dbStats.totalTables}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Registos:</span>
+                            <span>{dbStats.totalRecords}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Tamanho:</span>
+                            <span>{dbStats.sizeMB} MB</span>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={loadDatabaseStats} 
+                          variant="ghost" 
+                          size="sm" 
+                          className="mt-2 h-8"
+                        >
+                          Atualizar
+                        </Button>
                       </div>
                     )}
                   </div>
