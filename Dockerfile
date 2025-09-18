@@ -35,6 +35,7 @@ COPY --from=builder /app/dist ./dist
 
 # Copy server files
 COPY server ./server
+COPY sql ./sql
 
 # Ensure folders exist (volumes will override them)
 RUN mkdir -p /app/uploads /app/config

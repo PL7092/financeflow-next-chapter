@@ -28,7 +28,7 @@ class DatabaseService {
       database: (config.database && String(config.database).trim()) || (process.env.DB_NAME || 'personal_finance'),
       ssl: (config.useSSL || process.env.DB_SSL === 'true') ? {} : false,
       connectionLimit: Number(config.maxConnections) || 10,
-      acquireTimeout: (Number(config.connectionTimeout) || 30) * 1000,
+      connectTimeout: (Number(config.connectionTimeout) || 30) * 1000,
       multipleStatements: true,
       charset: 'utf8mb4',
     };
@@ -48,7 +48,7 @@ class DatabaseService {
         database: config.database,
         ssl: config.useSSL ? {} : false,
         connectionLimit: 1,
-        acquireTimeout: (config.connectionTimeout || 30) * 1000,
+        connectTimeout: (config.connectionTimeout || 30) * 1000,
       });
 
       const start = Date.now();
