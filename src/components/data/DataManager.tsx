@@ -52,10 +52,13 @@ const CategoryForm: React.FC<{
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="category-form-description">
         <DialogHeader>
           <DialogTitle>{category ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
         </DialogHeader>
+        <p id="category-form-description" className="sr-only">
+          Formulário para {category ? 'editar uma categoria existente' : 'criar uma nova categoria'} no sistema financeiro.
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -113,12 +116,12 @@ const CategoryForm: React.FC<{
             {parentCategories.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="parentId">Categoria Pai (opcional)</Label>
-                <Select value={formData.parentId} onValueChange={(value) => setFormData(prev => ({ ...prev, parentId: value }))}>
+                <Select value={formData.parentId || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, parentId: value === "none" ? "" : value }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Nenhuma" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma</SelectItem>
+                    <SelectItem value="none">Nenhuma</SelectItem>
                     {parentCategories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
@@ -209,10 +212,13 @@ const EntityForm: React.FC<{
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="entity-form-description">
         <DialogHeader>
           <DialogTitle>{entity ? 'Editar Entidade' : 'Nova Entidade'}</DialogTitle>
         </DialogHeader>
+        <p id="entity-form-description" className="sr-only">
+          Formulário para {entity ? 'editar uma entidade existente' : 'criar uma nova entidade'} no sistema financeiro.
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -249,12 +255,12 @@ const EntityForm: React.FC<{
 
             <div className="space-y-2">
               <Label htmlFor="defaultCategory">Categoria Padrão</Label>
-              <Select value={formData.defaultCategory} onValueChange={(value) => setFormData(prev => ({ ...prev, defaultCategory: value }))}>
+              <Select value={formData.defaultCategory || "none"} onValueChange={(value) => setFormData(prev => ({ ...prev, defaultCategory: value === "none" ? "" : value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {categories.filter(c => c.isActive).map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       <div className="flex items-center gap-2">
