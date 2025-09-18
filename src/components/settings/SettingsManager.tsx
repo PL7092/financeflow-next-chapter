@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Settings, User, Bell, Shield, Palette, Database, Download, Trash2, Save, AlertCircle, Brain, FileText, TestTube, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -11,13 +11,12 @@ import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
 
 export const SettingsManager: React.FC = () => {
-  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
 
   // Profile Settings
   const [profileData, setProfileData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: 'Utilizador Demo',
+    email: 'user@example.com',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -157,7 +156,7 @@ export const SettingsManager: React.FC = () => {
     if (window.confirm('Tem a certeza que deseja eliminar a sua conta? Esta ação é irreversível.')) {
       // Delete account logic
       console.log('Deleting account...');
-      logout();
+      // Account deletion would be handled here
     }
   };
 
