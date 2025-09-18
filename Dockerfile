@@ -27,6 +27,10 @@ WORKDIR /app
 # Instala serve globalmente para servir o build
 RUN npm install -g serve
 
+# Create uploads directory for file storage
+RUN mkdir -p /app/uploads
+RUN mkdir -p /app/dist
+
 # Copia os arquivos buildados
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/uploads ./uploads
@@ -41,8 +45,6 @@ COPY --from=builder /app/config ./config
 # Copy server files
 COPY server ./server
 
-# Create uploads directory for file storage
-RUN mkdir -p /app/uploads
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
