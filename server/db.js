@@ -13,12 +13,13 @@ class DatabaseService {
   }
 
   async createConnection(config) {
+    // Prioritize user-configured values over environment variables
     const connectionConfig = {
-      host: config.host || process.env.DB_HOST || 'mariadb',
+      host: (config.host && config.host.trim()) ? config.host : (process.env.DB_HOST || 'mariadb'),
       port: config.port || process.env.DB_PORT || 3306,
-      user: config.username || process.env.DB_USER || 'finance_user',
-      password: config.password || process.env.DB_PASSWORD || 'finance_user_password_2024',
-      database: config.database || process.env.DB_NAME || 'personal_finance',
+      user: (config.username && config.username.trim()) ? config.username : (process.env.DB_USER || 'finance_user'),
+      password: (config.password && config.password.trim()) ? config.password : (process.env.DB_PASSWORD || 'finance_user_password_2024'),
+      database: (config.database && config.database.trim()) ? config.database : (process.env.DB_NAME || 'personal_finance'),
       ssl: config.useSSL || process.env.DB_SSL === 'true' ? {} : false,
       connectionLimit: config.maxConnections || 10,
       acquireTimeout: (config.connectionTimeout || 30) * 1000,
