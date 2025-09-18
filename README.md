@@ -92,7 +92,7 @@ MYSQL_PASSWORD: [password_utilizador]
 docker run -d \
   --name=personal-finance \
   --net=bridge \
-  -p 8080:80 \
+  -p 3000:80 \
   -v /mnt/user/appdata/personal-finance:/app \
   --restart unless-stopped \
   [seu-dockerhub-username]/personal-finance:latest
@@ -107,37 +107,21 @@ services:
     image: [seu-dockerhub-username]/personal-finance:latest
     container_name: personal-finance
     ports:
-      - "8080:80"
+      - "3000:80"
     volumes:
       - /mnt/user/appdata/personal-finance:/app
     restart: unless-stopped
-    depends_on:
-      - mariadb
     environment:
-      - DB_HOST=mariadb
+      - DB_HOST=[IP_MARIADB_EXISTENTE]
       - DB_PORT=3306
       - DB_NAME=personal_finance
       - DB_USER=finance_user
       - DB_PASSWORD=[password_utilizador]
-
-  mariadb:
-    image: mariadb:10.11
-    container_name: mariadb-finance
-    ports:
-      - "3306:3306"
-    volumes:
-      - /mnt/user/appdata/mariadb:/var/lib/mysql
-    restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=[password_segura]
-      - MYSQL_DATABASE=personal_finance
-      - MYSQL_USER=finance_user
-      - MYSQL_PASSWORD=[password_utilizador]
 ```
 
 ### 3. Configuração Inicial
 
-1. Aceda à aplicação: `http://[IP_UNRAID]:8080`
+1. Aceda à aplicação: `http://[IP_UNRAID]:3000`
 2. Complete a configuração inicial da base de dados
 3. Crie a sua conta de utilizador
 4. Configure as suas contas e categorias
@@ -186,7 +170,7 @@ docker pull [seu-dockerhub-username]/personal-finance:latest
 docker run -d \
   --name=personal-finance \
   --net=bridge \
-  -p 8080:80 \
+  -p 3000:80 \
   -v /mnt/user/appdata/personal-finance:/app \
   --restart unless-stopped \
   [seu-dockerhub-username]/personal-finance:latest
@@ -226,7 +210,7 @@ docker pull [seu-dockerhub-username]/personal-finance:latest
 docker run -d \
   --name=personal-finance \
   --net=bridge \
-  -p 8080:80 \
+  -p 3000:80 \
   -v /mnt/user/appdata/personal-finance:/app \
   --restart unless-stopped \
   [seu-dockerhub-username]/personal-finance:latest
@@ -243,7 +227,7 @@ docker run -d \
 Após qualquer método de atualização:
 
 1. Verifique se o container está a correr: **Docker tab > personal-finance > Status: Started**
-2. Aceda à aplicação: `http://[IP_UNRAID]:8080`
+2. Aceda à aplicação: `http://[IP_UNRAID]:3000`
 3. Verifique a versão na página de configurações
 4. Confirme que as novas funcionalidades estão disponíveis
 
