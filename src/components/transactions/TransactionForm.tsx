@@ -112,9 +112,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       type: formData.type,
       amount: parseFloat(formData.amount),
       description: formData.description,
-      category: formData.category,
+      categoryId: formData.type === 'transfer' ? undefined : (formData.category || undefined),
       entity: formData.entity === 'none' ? undefined : formData.entity,
-      account: formData.account,
+      accountId: formData.account,
       date: formData.date,
       tags: formData.tags,
     };
@@ -123,7 +123,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   const filteredCategories = categories.filter(cat => 
-    formData.type === 'transfer' ? true : cat.type === formData.type
+    formData.type === 'transfer' ? true : !cat.type || cat.type === formData.type
   );
 
   return (
@@ -204,7 +204,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   </SelectTrigger>
                   <SelectContent>
                     {filteredCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.name}>
+                      <SelectItem key={category.id} value={category.id}>
                         <div className="flex items-center gap-2">
                           <div 
                             className="w-3 h-3 rounded-full" 
@@ -255,7 +255,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.name}>
+                    <SelectItem key={account.id} value={account.id}>
                       {account.name} (€{account.balance.toFixed(2)})
                     </SelectItem>
                   ))}
@@ -281,7 +281,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     {accounts
                       .filter(account => account.name !== formData.account)
                       .map((account) => (
-                        <SelectItem key={account.id} value={account.name}>
+                        <SelectItem key={account.id} value={account.id}>
                           {account.name} (€{account.balance.toFixed(2)})
                         </SelectItem>
                       ))}

@@ -230,7 +230,11 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   // API Helper function for MariaDB calls
   const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('auth_token');
-    const response = await fetch(`/api${endpoint}`, {
+    const base = (localStorage.getItem('api_base_url') || '').trim();
+    const baseClean = base.replace(/\/$/, '');
+    const url = baseClean ? `${baseClean}/api${endpoint}` : `/api${endpoint}`;
+
+    const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -251,7 +255,21 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     try {
       const response = await apiCall('/transactions');
       if (response.success) {
-        setTransactions(response.data);
+        setTransactions(response.data.map((row: any) => ({
+          id: row.id,
+          amount: row.amount,
+          description: row.description,
+          type: row.type,
+          categoryId: row.category_id ?? undefined,
+          accountId: row.account_id,
+          date: row.date,
+          tags: row.tags || [],
+          entity: row.entity,
+          isReconciled: row.is_reconciled,
+          category_name: row.category_name,
+          category_color: row.category_color,
+          account_name: row.account_name,
+        })));
       }
     } catch (error) {
       console.error('Error loading transactions:', error);
@@ -300,16 +318,40 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
     try {
       setIsLoading(true);
+      const payload = {
+        amount: transaction.amount,
+        description: transaction.description,
+        type: transaction.type,
+        category_id: transaction.categoryId ?? null,
+        account_id: transaction.accountId,
+        date: transaction.date,
+      };
       const response = await apiCall('/transactions', {
         method: 'POST',
-        body: JSON.stringify(transaction),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
-        setTransactions(prev => [response.data, ...prev]);
+        const row = response.data;
+        const mapped = {
+          id: row.id,
+          amount: row.amount,
+          description: row.description,
+          type: row.type,
+          categoryId: row.category_id ?? undefined,
+          accountId: row.account_id,
+          date: row.date,
+          tags: row.tags || [],
+          entity: row.entity,
+          isReconciled: row.is_reconciled,
+          category_name: row.category_name,
+          category_color: row.category_color,
+          account_name: row.account_name,
+        } as Transaction;
+        setTransactions(prev => [mapped, ...prev]);
         // Refresh accounts to update balances
         await loadAccounts();
-        return response.data;
+        return mapped;
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -323,13 +365,37 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const updateTransaction = async (id: string, transaction: Partial<Transaction>) => {
     try {
       setIsLoading(true);
+      const payload = {
+        amount: transaction.amount!,
+        description: transaction.description!,
+        type: transaction.type!,
+        category_id: transaction.categoryId ?? null,
+        account_id: transaction.accountId!,
+        date: transaction.date!,
+      };
       const response = await apiCall(`/transactions/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(transaction),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
-        setTransactions(prev => prev.map(t => t.id === id ? response.data : t));
+        const row = response.data;
+        const mapped = {
+          id: row.id,
+          amount: row.amount,
+          description: row.description,
+          type: row.type,
+          categoryId: row.category_id ?? undefined,
+          accountId: row.account_id,
+          date: row.date,
+          tags: row.tags || [],
+          entity: row.entity,
+          isReconciled: row.is_reconciled,
+          category_name: row.category_name,
+          category_color: row.category_color,
+          account_name: row.account_name,
+        } as Transaction;
+        setTransactions(prev => prev.map(t => t.id === id ? mapped : t));
         // Refresh accounts to update balances
         await loadAccounts();
       }

@@ -169,9 +169,9 @@ export const AccountsManager: React.FC = () => {
     }
   };
 
-  const getRecentTransactions = (accountName: string) => {
+  const getRecentTransactions = (accountId: string) => {
     return transactions
-      .filter(t => t.accountId === accountName)
+      .filter(t => t.accountId === accountId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 3);
   };
@@ -227,7 +227,7 @@ export const AccountsManager: React.FC = () => {
         ) : (
           accounts.map((account) => {
             const Icon = getAccountIcon(account.type);
-            const recentTransactions = getRecentTransactions(account.name);
+            const recentTransactions = getRecentTransactions(account.id);
 
             return (
               <Card key={account.id} className="bg-gradient-card shadow-card">
