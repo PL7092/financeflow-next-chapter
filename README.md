@@ -52,71 +52,123 @@ Uma aplicação web completa de gestão financeira pessoal desenvolvida com Reac
 - **Estado**: Context API, React Query
 - **Formulários**: React Hook Form com validação Zod
 
-## 🐳 Instalação Docker/Unraid
+## 🐳 Instalação no Unraid com Compose
 
 ### Pré-requisitos
-- Docker instalado
-- Unraid 6.8+ (para utilizadores Unraid)
-- MariaDB container em execução
+- Unraid 6.8+ com Compose Manager plugin instalado
+- Plugin "Compose Manager" disponível via Community Applications
 
-### 1. Configuração MariaDB
+### Instalação Automática via Unraid Compose
 
-Crie um container MariaDB no Unraid:
+**Passo 1:** Instale o plugin Compose Manager
+- Aceda a **Community Applications**
+- Procure por "Compose Manager"
+- Instale o plugin e reinicie se necessário
 
-```bash
-# Configurações do Container MariaDB
-Nome: mariadb-finance
-Repository: mariadb:10.11
-Network Type: Custom: br0
-Port: 3306:3306
-
-# Variáveis de Ambiente
-MYSQL_ROOT_PASSWORD: [password_segura]
-MYSQL_DATABASE: personal_finance
-MYSQL_USER: finance_user
-MYSQL_PASSWORD: [password_utilizador]
-
-# Volumes
-/mnt/user/appdata/mariadb:/var/lib/mysql
-```
-
-### 2. Instalação da Aplicação no Unraid
-
-1. **Via Community Applications (Recomendado)**:
-   - Pesquise por "Personal Finance Manager"
-   - Instale e configure as variáveis
-
-2. **Via Docker Run**:
-
-```bash
-docker run -d \
-  --name=personal-finance \
-  --net=bridge \
-  -p 3000:80 \
-  -v /mnt/user/appdata/personal-finance:/app \
-  --restart unless-stopped \
-  [seu-dockerhub-username]/personal-finance:latest
-```
-
-3. **Via Docker Compose** (para instalação manual):
+**Passo 2:** Crie a stack do Personal Finance Manager
+1. Aceda ao **Compose Manager** no menu do Unraid
+2. Clique em **Add New Stack**
+3. Nome da Stack: `personal-finance`
+4. Cole o seguinte docker-compose.yml:
 
 ```yaml
 version: '3.8'
+
 services:
-  personal-finance:
-    image: [seu-dockerhub-username]/personal-finance:latest
-    container_name: personal-finance
-    ports:
-      - "3000:80"
-    volumes:
-      - /mnt/user/appdata/personal-finance:/app
+  mariadb:
+    image: mariadb:10.11
+    container_name: personal-finance-db
     restart: unless-stopped
     environment:
-      - DB_HOST=[IP_MARIADB_EXISTENTE]
-      - DB_PORT=3306
-      - DB_NAME=personal_finance
-      - DB_USER=finance_user
-      - DB_PASSWORD=[password_utilizador]
+      MYSQL_ROOT_PASSWORD: finance_root_password_2024
+      MYSQL_DATABASE: personal_finance
+      MYSQL_USER: finance_user
+      MYSQL_PASSWORD: finance_user_password_2024
+    volumes:
+      - /mnt/user/appdata/personal-finance/mariadb:/var/lib/mysql
+    networks:
+      - finance-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  app:
+    image: node:18-alpine
+    container_name: personal-finance-app
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "
+      if [ ! -d '.git' ]; then
+        git clone https://github.com/PL7092/financeflow-next-chapter.git . &&
+        npm install &&
+        npm run build
+      fi &&
+      npm start"
+    ports:
+      - "3000:3000"
+    volumes:
+      - /mnt/user/appdata/personal-finance/app:/app
+      - /mnt/user/appdata/personal-finance/uploads:/app/uploads
+    environment:
+      NODE_ENV: production
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: personal_finance
+      DB_USER: finance_user
+      DB_PASSWORD: finance_user_password_2024
+      DB_SSL: false
+    networks:
+      - finance-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+networks:
+  finance-network:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+  app_data:
+```
+
+**Passo 3:** Inicie a stack
+1. Clique em **Compose Up** para criar e iniciar os containers
+2. Aguarde o download das imagens e instalação das dependências (primeira execução pode demorar 5-10 minutos)
+3. Aceda à aplicação em `http://[IP_DO_UNRAID]:3000`
+
+### Configuração Pós-Instalação
+
+Após a instalação bem-sucedida:
+1. Aceda à aplicação: `http://[IP_DO_UNRAID]:3000`
+2. Crie a sua conta de administrador
+3. Configure as suas contas financeiras
+4. Importe dados existentes se necessário
+
+### Gestão da Stack
+
+**Para atualizar a aplicação:**
+```bash
+# No Compose Manager, selecione a stack "personal-finance"
+# Clique em "Compose Down" depois "Compose Up"
+# Ou use "Recreate" para forçar atualização
+```
+
+**Para ver logs:**
+```bash
+# No Compose Manager, clique em "Logs" na stack
+# Ou via SSH no Unraid:
+docker logs personal-finance-app
+docker logs personal-finance-db
+```
+
+**Para backup dos dados:**
+```bash
+# Os dados ficam guardados em:
+# /mnt/user/appdata/personal-finance/mariadb (base de dados)
+# /mnt/user/appdata/personal-finance/app (código e configurações)
+# /mnt/user/appdata/personal-finance/uploads (ficheiros enviados)
 ```
 
 ### 3. Configuração Inicial
