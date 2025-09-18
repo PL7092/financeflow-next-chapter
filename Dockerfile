@@ -15,53 +15,36 @@ COPY . .
 # Build the React application
 RUN npm run build
 
+
 # Production stage
 FROM node:18-alpine AS production
 
 WORKDIR /app
 
-# Install only production dependencies and server packages
-#COPY package*.json ./
-#RUN npm ci --only=production
-
-# Instala serve globalmente para servir o build
+# Install serve globally (if you only want to serve static React build)
 RUN npm install -g serve
 
-# Create uploads directory for file storage
-RUN mkdir -p /app/uploads
-RUN mkdir -p /app/dist
+# Create runtime directories (these will be overridden by volumes at runtime)
+RUN mkdir -p /app/uploads /app/config
 
-# Copia os arquivos buildados
+# Copy build output
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/uploads ./uploads
-COPY --from=builder /app/config ./config
-
-# Install additional server dependencies
-#RUN npm install express cors dotenv
-
-# Copy built React application
-#COPY --from=builder /app/dist ./dist
 
 # Copy server files
 COPY server ./server
 
-
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S appuser -u 1001 -G nodejs
+    adduser -S appuser -u 1001 -G nodejs && \
+    chown -R appuser:nodejs /app
 
-# Change ownership of app directory
-RUN chown -R appuser:nodejs /app
-
-# Switch to non-root user
 USER appuser
 
-# Expose port
 EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Start the server (serves both API and React app)
+# Start the Node server (serves API + React app from ./dist)
 CMD ["node", "server/index.js"]
