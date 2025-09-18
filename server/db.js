@@ -115,10 +115,28 @@ class DatabaseService {
           .replace(/\bUSE\s+[`"']?[\w-]+[`"']?\s*;?/gi, '');
       }
 
-      // Execute the initialization script (allowing multiple statements)
+      // Execute the initialization script statement-by-statement to ignore benign duplicate errors
       const connection = await this.pool.getConnection();
-      await connection.query(initSQL);
-      connection.release();
+      try {
+        const statements = initSQL
+          .split(/;\s*\n/)
+          .map(s => s.trim())
+          .filter(s => s.length);
+
+        for (const stmt of statements) {
+          try {
+            await connection.query(stmt);
+          } catch (e) {
+            if (e && (e.code === 'ER_DUP_KEYNAME' || e.code === 'ER_TABLE_EXISTS_ERROR' || e.code === 'ER_DUP_FIELDNAME')) {
+              // Ignore duplicate index/field/table errors on idempotent runs
+              continue;
+            }
+            throw e;
+          }
+        }
+      } finally {
+        connection.release();
+      }
 
       // Get table statistics
       const stats = await this.getTableStats();
@@ -155,8 +173,10 @@ class DatabaseService {
       // Get row counts for each table
       const tableStats = {};
       for (const tableName of tableNames) {
-        const [countResult] = await connection.execute(`SELECT COUNT(*) as count FROM ??`, [tableName]);
-        tableStats[tableName] = countResult[0].count;
+        const safeName = String(tableName).replace(/[^a-zA-Z0-9_]/g, '');
+        if (!safeName) continue;
+        const [countResult] = await connection.query(`SELECT COUNT(*) as count FROM \`${safeName}\``);
+        tableStats[tableName] = countResult[0]?.count ?? 0;
       }
 
       // Get database size
