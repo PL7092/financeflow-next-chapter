@@ -171,7 +171,7 @@ export const AccountsManager: React.FC = () => {
 
   const getRecentTransactions = (accountName: string) => {
     return transactions
-      .filter(t => t.account === accountName)
+      .filter(t => t.accountId === accountName)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 3);
   };

@@ -1,209 +1,225 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarIcon } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { useFinance } from '../../contexts/FinanceContext';
 import type { Budget } from '../../contexts/FinanceContext';
 
 interface BudgetFormProps {
-  budget?: Budget | null;
+  budget?: Budget;
   onClose: () => void;
-  onSave: (budget: any) => void;
-  defaultMonth?: number;
-  defaultYear?: number;
 }
 
-export const BudgetForm: React.FC<BudgetFormProps> = ({
-  budget,
-  onClose,
-  onSave,
-  defaultMonth = new Date().getMonth(),
-  defaultYear = new Date().getFullYear(),
-}) => {
-  const { categories } = useFinance();
+export function BudgetForm({ budget, onClose }: BudgetFormProps) {
+  const { addBudget, updateBudget, categories } = useFinance();
+  const [loading, setLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
-    category: '',
-    limit: '',
-    month: defaultMonth,
-    year: defaultYear,
+    name: '',
+    categoryId: '',
+    amount: '',
+    period: 'monthly' as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+    startDate: '',
+    endDate: '',
   });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (budget) {
       setFormData({
-        category: budget.category,
-        limit: budget.limit.toString(),
-        month: budget.month,
-        year: budget.year,
+        name: budget.name,
+        categoryId: budget.categoryId || '',
+        amount: budget.amount.toString(),
+        period: budget.period,
+        startDate: budget.startDate,
+        endDate: budget.endDate,
       });
+    } else {
+      // Set default dates for new budget
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      
+      setFormData(prev => ({
+        ...prev,
+        startDate: startOfMonth,
+        endDate: endOfMonth,
+      }));
     }
   }, [budget]);
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.category) {
-      newErrors.category = 'Categoria é obrigatória';
-    }
-    if (!formData.limit || parseFloat(formData.limit) <= 0) {
-      newErrors.limit = 'Limite deve ser maior que zero';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!formData.name || !formData.amount || !formData.startDate || !formData.endDate) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const budgetData = {
-      category: formData.category,
-      limit: parseFloat(formData.limit),
-      month: formData.month,
-      year: formData.year,
-      spent: budget?.spent || 0,
-    };
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Erro",
+        description: "O valor deve ser um número positivo",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    onSave(budgetData);
+    setLoading(true);
+    
+    try {
+      const budgetData = {
+        name: formData.name,
+        categoryId: formData.categoryId || undefined,
+        amount,
+        spent: 0,
+        period: formData.period,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        isActive: true,
+      };
+
+      if (budget) {
+        await updateBudget(budget.id, budgetData);
+        toast({
+          title: "Orçamento atualizado",
+          description: "O orçamento foi atualizado com sucesso",
+        });
+      } else {
+        await addBudget(budgetData);
+        toast({
+          title: "Orçamento criado",
+          description: "O novo orçamento foi criado com sucesso",
+        });
+      }
+      
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar o orçamento",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const expenseCategories = categories.filter(cat => cat.type === 'expense');
-
-  const months = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md bg-gradient-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>
-              {budget ? 'Editar Orçamento' : 'Novo Orçamento'}
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
+    <Card>
+      <CardHeader>
+        <CardTitle>{budget ? 'Editar' : 'Novo'} Orçamento</CardTitle>
+        <CardDescription>
+          {budget ? 'Atualize os dados do orçamento' : 'Crie um novo orçamento para controlar seus gastos'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome do Orçamento *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Ex: Alimentação Dezembro"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Categoria</Label>
+            <Select
+              value={formData.categoryId}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma categoria (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas as categorias</SelectItem>
+                {categories.filter(c => c.type === 'expense').map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="amount">Valor Limite (€) *</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.amount}
+              onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="period">Período</Label>
+            <Select
+              value={formData.period}
+              onValueChange={(value: 'weekly' | 'monthly' | 'quarterly' | 'yearly') => setFormData(prev => ({ ...prev, period: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">Semanal</SelectItem>
+                <SelectItem value="monthly">Mensal</SelectItem>
+                <SelectItem value="quarterly">Trimestral</SelectItem>
+                <SelectItem value="yearly">Anual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Data de Início *</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="endDate">Data de Fim *</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={formData.endDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-4">
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Salvando...' : budget ? 'Atualizar' : 'Criar'} Orçamento
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Categoria */}
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => handleInputChange('category', value)}
-              >
-                <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {expenseCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: category.color }}
-                        />
-                        {category.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.category && (
-                <p className="text-sm text-red-500">{errors.category}</p>
-              )}
-            </div>
-
-            {/* Limite */}
-            <div className="space-y-2">
-              <Label htmlFor="limit">Limite Mensal (€)</Label>
-              <Input
-                id="limit"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={formData.limit}
-                onChange={(e) => handleInputChange('limit', e.target.value)}
-                className={errors.limit ? 'border-red-500' : ''}
-              />
-              {errors.limit && (
-                <p className="text-sm text-red-500">{errors.limit}</p>
-              )}
-            </div>
-
-            {/* Mês */}
-            <div className="space-y-2">
-              <Label>Mês</Label>
-              <Select
-                value={formData.month.toString()}
-                onValueChange={(value) => handleInputChange('month', parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month, index) => (
-                    <SelectItem key={index} value={index.toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Ano */}
-            <div className="space-y-2">
-              <Label>Ano</Label>
-              <Select
-                value={formData.year.toString()}
-                onValueChange={(value) => handleInputChange('year', parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Botões */}
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-                Cancelar
-              </Button>
-              <Button type="submit" className="flex-1">
-                {budget ? 'Actualizar' : 'Guardar'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+        </form>
+      </CardContent>
+    </Card>
   );
-};
+}

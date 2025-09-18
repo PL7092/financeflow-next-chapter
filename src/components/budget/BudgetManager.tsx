@@ -1,38 +1,34 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, Target, AlertTriangle, CheckCircle, Edit, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { useFinance } from '../../contexts/FinanceContext';
 import { BudgetForm } from './BudgetForm';
-import { Button } from '../ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Progress } from '../ui/progress';
-import { Badge } from '../ui/badge';
-import { formatMonthPT } from '../../utils/dateUtils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Plus, Pencil, Trash2, Target, TrendingUp, TrendingDown, Calendar, Euro } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
-export const BudgetManager: React.FC = () => {
-  const { budgets, deleteBudget, addBudget, updateBudget, transactions } = useFinance();
+export function BudgetManager() {
+  const { budgets, deleteBudget, transactions } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editingBudget, setEditingBudget] = useState<any>(null);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Calculate spent amounts based on actual transactions
+  // Calculate spent amounts based on actual transactions for each budget
   const budgetsWithSpent = useMemo(() => {
-    return budgets
-      .filter(budget => budget.month === selectedMonth && budget.year === selectedYear)
-      .map(budget => {
-        const spent = transactions
-          .filter(t => 
-            t.type === 'expense' &&
-            t.category === budget.category &&
-            new Date(t.date).getMonth() === selectedMonth &&
-            new Date(t.date).getFullYear() === selectedYear
-          )
-          .reduce((sum, t) => sum + t.amount, 0);
-        
-        return { ...budget, spent };
-      });
-  }, [budgets, transactions, selectedMonth, selectedYear]);
+    return budgets.map(budget => {
+      const spent = transactions
+        .filter(t => 
+          t.type === 'expense' &&
+          t.categoryId === budget.categoryId &&
+          new Date(t.date) >= new Date(budget.startDate) &&
+          new Date(t.date) <= new Date(budget.endDate)
+        )
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      return { ...budget, spent };
+    });
+  }, [budgets, transactions]);
 
   const handleEdit = (budget: any) => {
     setEditingBudget(budget);
@@ -41,20 +37,19 @@ export const BudgetManager: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem a certeza que deseja eliminar este orçamento?')) {
-      await deleteBudget(id);
-    }
-  };
-
-  const handleFormSave = async (budgetData: any) => {
-    try {
-      if (editingBudget) {
-        await updateBudget(editingBudget.id, budgetData);
-      } else {
-        await addBudget(budgetData);
+      try {
+        await deleteBudget(id);
+        toast({
+          title: "Orçamento eliminado",
+          description: "O orçamento foi eliminado com sucesso",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao eliminar o orçamento",
+          variant: "destructive",
+        });
       }
-      handleFormClose();
-    } catch (error) {
-      console.error('Erro ao guardar orçamento:', error);
     }
   };
 
@@ -63,37 +58,26 @@ export const BudgetManager: React.FC = () => {
     setEditingBudget(null);
   };
 
-  const getBudgetStatus = (budget: any) => {
-    const percentage = (budget.spent / budget.limit) * 100;
-    if (percentage >= 100) return { status: 'exceeded', color: 'red', icon: AlertTriangle, text: 'Excedido' };
-    if (percentage >= 80) return { status: 'warning', color: 'yellow', icon: AlertTriangle, text: 'Atenção' };
-    return { status: 'good', color: 'green', icon: CheckCircle, text: 'No limite' };
-  };
+  if (showForm) {
+    return (
+      <BudgetForm 
+        budget={editingBudget} 
+        onClose={handleFormClose}
+      />
+    );
+  }
 
-  const months = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-  ];
-
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
-
-  // Summary calculations
-  const summary = useMemo(() => {
-    const totalBudget = budgetsWithSpent.reduce((sum, b) => sum + b.limit, 0);
-    const totalSpent = budgetsWithSpent.reduce((sum, b) => sum + b.spent, 0);
-    const remaining = totalBudget - totalSpent;
-    
-    return { totalBudget, totalSpent, remaining };
-  }, [budgetsWithSpent]);
+  const totalBudget = budgetsWithSpent.reduce((sum, budget) => sum + budget.amount, 0);
+  const totalSpent = budgetsWithSpent.reduce((sum, budget) => sum + budget.spent, 0);
+  const overallPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
-          <p className="text-muted-foreground">Controle os seus gastos mensais por categoria</p>
+          <h1 className="text-2xl font-bold">Orçamentos</h1>
+          <p className="text-muted-foreground">Gerencie e monitore seus orçamentos</p>
         </div>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -101,85 +85,42 @@ export const BudgetManager: React.FC = () => {
         </Button>
       </div>
 
-      {/* Period Selection */}
-      <Card className="bg-gradient-card shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Período
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Mês</label>
-              <Select
-                value={selectedMonth.toString()}
-                onValueChange={(value) => setSelectedMonth(parseInt(value))}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month, index) => (
-                    <SelectItem key={index} value={index.toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ano</label>
-              <Select
-                value={selectedYear.toString()}
-                onValueChange={(value) => setSelectedYear(parseInt(value))}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Summary */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Summary Card */}
+      {budgetsWithSpent.length > 0 && (
         <Card className="bg-gradient-card shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Orçamento Total</CardTitle>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Resumo Geral
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">€{summary.totalBudget.toFixed(2)}</div>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-sm font-medium text-muted-foreground">Total Orçado</p>
+                <p className="text-xl font-bold">€{totalBudget.toFixed(2)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-muted-foreground">Total Gasto</p>
+                <p className="text-xl font-bold">€{totalSpent.toFixed(2)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-muted-foreground">Restante</p>
+                <p className={`text-xl font-bold ${(totalBudget - totalSpent) >= 0 ? 'text-profit' : 'text-loss'}`}>
+                  €{(totalBudget - totalSpent).toFixed(2)}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-muted-foreground">% Utilizado</p>
+                <p className={`text-xl font-bold ${overallPercentage > 100 ? 'text-loss' : overallPercentage > 80 ? 'text-warning' : 'text-profit'}`}>
+                  {overallPercentage.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+            <Progress value={Math.min(overallPercentage, 100)} className="w-full h-3" />
           </CardContent>
         </Card>
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Gasto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">€{summary.totalSpent.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-card shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Restante</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${summary.remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              €{summary.remaining.toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
       {/* Budgets */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -189,7 +130,7 @@ export const BudgetManager: React.FC = () => {
               <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">Nenhum orçamento definido</h3>
               <p className="text-muted-foreground mb-4">
-                Crie o seu primeiro orçamento para {formatMonthPT(selectedMonth)} de {selectedYear}
+                Crie o seu primeiro orçamento para controlar seus gastos
               </p>
               <Button onClick={() => setShowForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -199,23 +140,33 @@ export const BudgetManager: React.FC = () => {
           </Card>
         ) : (
           budgetsWithSpent.map((budget) => {
-            const percentage = (budget.spent / budget.limit) * 100;
-            const status = getBudgetStatus(budget);
-            const remaining = budget.limit - budget.spent;
-            const Icon = status.icon;
+            const percentage = budget.amount > 0 ? (budget.spent / budget.amount) * 100 : 0;
+            const isOverBudget = budget.spent > budget.amount;
+            const isNearLimit = percentage > 80 && !isOverBudget;
 
             return (
-              <Card key={budget.id} className="bg-gradient-card shadow-card">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{budget.category}</CardTitle>
+              <Card key={budget.id} className="bg-gradient-card shadow-card hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-lg">{budget.name}</CardTitle>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
+                      </div>
+                      {budget.category_name && (
+                        <Badge variant="secondary" className="text-xs">
+                          {budget.category_name}
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(budget)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -227,65 +178,63 @@ export const BudgetManager: React.FC = () => {
                     </div>
                   </div>
                 </CardHeader>
+
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Badge 
-                      variant={status.status === 'exceeded' ? 'destructive' : 'secondary'}
-                      className="gap-1"
-                    >
-                      <Icon className="h-3 w-3" />
-                      {status.text}
-                    </Badge>
-                    <div className="text-right">
-                      <div className="text-sm text-muted-foreground">
-                        €{budget.spent.toFixed(2)} / €{budget.limit.toFixed(2)}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">€{budget.amount.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">€{(budget.amount - budget.spent).toFixed(2)} restante</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold">€{budget.spent.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">{percentage.toFixed(1)}% usado</p>
                       </div>
                     </div>
-                  </div>
-
-                  <Progress 
-                    value={Math.min(percentage, 100)} 
-                    className="h-2"
-                  />
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Utilizado:</span>
-                      <span>{percentage.toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Restante:</span>
-                      <span className={remaining >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        €{remaining.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {percentage >= 100 && (
-                    <div className="p-2 bg-red-50 dark:bg-red-950 rounded-lg text-sm text-red-700 dark:text-red-300">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        Orçamento excedido em €{(budget.spent - budget.limit).toFixed(2)}
+                    
+                    <Progress 
+                      value={Math.min(percentage, 100)} 
+                      className="w-full h-2"
+                    />
+                    
+                    {isOverBudget && (
+                      <div className="flex items-center gap-2 text-sm text-loss">
+                        <TrendingDown className="h-4 w-4" />
+                        Excedido em €{(budget.spent - budget.amount).toFixed(2)}
                       </div>
+                    )}
+                    
+                    {isNearLimit && (
+                      <div className="flex items-center gap-2 text-sm text-warning">
+                        <TrendingUp className="h-4 w-4" />
+                        Próximo do limite
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Período</p>
+                      <p className="font-medium capitalize">{budget.period}</p>
                     </div>
-                  )}
+                    <div>
+                      <p className="text-muted-foreground">Status</p>
+                      <Badge 
+                        variant={isOverBudget ? "destructive" : isNearLimit ? "secondary" : "default"}
+                        className="text-xs"
+                      >
+                        {isOverBudget ? 'Excedido' : isNearLimit ? 'Atenção' : 'Normal'}
+                      </Badge>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
           })
         )}
       </div>
-
-      {/* Form Modal */}
-      {showForm && (
-        <BudgetForm
-          budget={editingBudget}
-          onClose={handleFormClose}
-          onSave={handleFormSave}
-          defaultMonth={selectedMonth}
-          defaultYear={selectedYear}
-        />
-      )}
     </div>
   );
-};
+}
