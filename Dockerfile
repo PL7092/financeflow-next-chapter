@@ -21,14 +21,22 @@ FROM node:18-alpine AS production
 WORKDIR /app
 
 # Install only production dependencies and server packages
-COPY package*.json ./
-RUN npm ci --only=production
+#COPY package*.json ./
+#RUN npm ci --only=production
+
+# Instala serve globalmente para servir o build
+RUN npm install -g serve
+
+# Copia os arquivos buildados
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/uploads ./uploads
+COPY --from=builder /app/config ./config
 
 # Install additional server dependencies
-RUN npm install express cors dotenv
+#RUN npm install express cors dotenv
 
 # Copy built React application
-COPY --from=builder /app/dist ./dist
+#COPY --from=builder /app/dist ./dist
 
 # Copy server files
 COPY server ./server
