@@ -203,16 +203,6 @@ export class AutomationService {
     for (const category of categories) {
       if (!category.isActive || category.type !== transaction.type) continue;
       
-      // Check keywords
-      if (category.keywords) {
-        for (const keyword of category.keywords) {
-          if (description.includes(keyword.toLowerCase())) {
-            bestCategory = category.name;
-            bestCategoryScore = Math.max(bestCategoryScore, 0.7);
-          }
-        }
-      }
-      
       // Check keywords using keywords array
       if (category.keywords && category.keywords.length > 0) {
         for (const keyword of category.keywords) {
@@ -220,18 +210,6 @@ export class AutomationService {
               (transaction.entity && transaction.entity.toLowerCase().includes(keyword.toLowerCase()))) {
             bestCategory = category.name;
             bestCategoryScore = Math.max(bestCategoryScore, 0.7);
-          }
-        }
-      }
-          
-          try {
-            const ruleMatch = this.evaluateRule(rule.condition, transaction);
-            if (ruleMatch && rule.confidence > bestCategoryScore) {
-              bestCategory = category.name;
-              bestCategoryScore = rule.confidence;
-            }
-          } catch (error) {
-            console.warn('Error evaluating rule:', rule.condition, error);
           }
         }
       }
