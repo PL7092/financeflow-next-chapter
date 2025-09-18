@@ -213,10 +213,16 @@ export class AutomationService {
         }
       }
       
-      // Check rules
-      if (category.rules) {
-        for (const rule of category.rules) {
-          if (!rule.active) continue;
+      // Check keywords using keywords array
+      if (category.keywords && category.keywords.length > 0) {
+        for (const keyword of category.keywords) {
+          if (description.includes(keyword.toLowerCase()) || 
+              (transaction.entity && transaction.entity.toLowerCase().includes(keyword.toLowerCase()))) {
+            bestCategory = category.name;
+            bestCategoryScore = Math.max(bestCategoryScore, 0.7);
+          }
+        }
+      }
           
           try {
             const ruleMatch = this.evaluateRule(rule.condition, transaction);

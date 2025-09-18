@@ -147,13 +147,6 @@ export interface Category {
   parentId?: string; // For subcategories
   icon?: string;
   keywords?: string[]; // For AI categorization
-  rules?: Array<{
-    id: string;
-    condition: string; // e.g., "description contains 'netflix'"
-    confidence: number;
-    active: boolean;
-  }>;
-  budgetDefault?: number;
   isActive: boolean;
 }
 
@@ -164,13 +157,29 @@ export interface Entity {
   // Enhanced features
   aliases?: string[]; // Alternative names for matching
   defaultCategory?: string;
-  website?: string;
+  defaultSubcategory?: string;
   notes?: string;
   transactionPatterns?: Array<{
     pattern: string;
     confidence: number;
   }>;
   isActive: boolean;
+}
+
+export interface AIRule {
+  id: string;
+  name: string;
+  description: string;
+  condition: string; // e.g., "description contains 'netflix'"
+  targetCategory?: string;
+  targetSubcategory?: string;
+  targetEntity?: string;
+  confidence: number;
+  priority: number;
+  isActive: boolean;
+  created_at: string;
+  lastUsed?: string;
+  successRate?: number; // Percentage of correct categorizations
 }
 
 interface FinanceContextType {
@@ -184,6 +193,7 @@ interface FinanceContextType {
   savingsGoals: SavingsGoal[];
   categories: Category[];
   entities: Entity[];
+  aiRules: AIRule[];
   
   // Loading states
   isLoading: boolean;
@@ -218,10 +228,16 @@ interface FinanceContextType {
   deleteSavingsGoal: (id: string) => Promise<void>;
   
   addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
+  updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   
   addEntity: (entity: Omit<Entity, 'id'>) => Promise<void>;
+  updateEntity: (id: string, entity: Partial<Entity>) => Promise<void>;
   deleteEntity: (id: string) => Promise<void>;
+  
+  addAIRule: (rule: Omit<AIRule, 'id' | 'created_at'>) => Promise<void>;
+  updateAIRule: (id: string, rule: Partial<AIRule>) => Promise<void>;
+  deleteAIRule: (id: string) => Promise<void>;
   
   refreshData: () => Promise<void>;
 }
@@ -271,6 +287,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [categories, setCategories] = useState<Category[]>(mockData.categories);
   const [entities, setEntities] = useState<Entity[]>(mockData.entities);
+  const [aiRules, setAIRules] = useState<AIRule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // API Helper function for MariaDB calls
@@ -547,6 +564,15 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
+  const updateCategory = async (id: string, category: Partial<Category>) => {
+    try {
+      setCategories(prev => prev.map(c => c.id === id ? { ...c, ...category } : c));
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
+  };
+
   const deleteCategory = async (id: string) => {
     try {
       setCategories(prev => prev.filter(c => c.id !== id));
@@ -570,11 +596,53 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
+  const updateEntity = async (id: string, entity: Partial<Entity>) => {
+    try {
+      setEntities(prev => prev.map(e => e.id === id ? { ...e, ...entity } : e));
+    } catch (error) {
+      console.error('Error updating entity:', error);
+      throw error;
+    }
+  };
+
   const deleteEntity = async (id: string) => {
     try {
       setEntities(prev => prev.filter(e => e.id !== id));
     } catch (error) {
       console.error('Error deleting entity:', error);
+      throw error;
+    }
+  };
+
+  // AI Rules methods
+  const addAIRule = async (rule: Omit<AIRule, 'id' | 'created_at'>) => {
+    try {
+      const newRule: AIRule = {
+        ...rule,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString(),
+      };
+      setAIRules(prev => [...prev, newRule]);
+    } catch (error) {
+      console.error('Error adding AI rule:', error);
+      throw error;
+    }
+  };
+
+  const updateAIRule = async (id: string, rule: Partial<AIRule>) => {
+    try {
+      setAIRules(prev => prev.map(r => r.id === id ? { ...r, ...rule } : r));
+    } catch (error) {
+      console.error('Error updating AI rule:', error);
+      throw error;
+    }
+  };
+
+  const deleteAIRule = async (id: string) => {
+    try {
+      setAIRules(prev => prev.filter(r => r.id !== id));
+    } catch (error) {
+      console.error('Error deleting AI rule:', error);
       throw error;
     }
   };
@@ -614,6 +682,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     savingsGoals,
     categories,
     entities,
+    aiRules,
     isLoading,
     
     // Actions
@@ -639,9 +708,14 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     updateSavingsGoal,
     deleteSavingsGoal,
     addCategory,
+    updateCategory,
     deleteCategory,
     addEntity,
+    updateEntity,
     deleteEntity,
+    addAIRule,
+    updateAIRule,
+    deleteAIRule,
     refreshData,
   };
 
