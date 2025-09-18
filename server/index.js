@@ -60,18 +60,20 @@ app.post('/api/db/test', async (req, res) => {
 
 app.post('/api/db/init', async (req, res) => {
   try {
-    // Initialize connection if not exists
-    if (!db.pool) {
-      await db.createConnection({
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
-        username: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-        useSSL: process.env.DB_SSL === 'true'
-      });
-    }
-    
+    // Prefer client-provided config; fallback to environment
+    const bodyConfig = req.body || {};
+    const config = bodyConfig.host ? bodyConfig : {
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      username: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      useSSL: process.env.DB_SSL === 'true'
+    };
+
+    // (Re)initialize connection with provided config
+    await db.createConnection(config);
+
     const result = await db.initializeSchema();
     res.json(result);
   } catch (error) {
@@ -110,9 +112,37 @@ app.get('/api/db/stats', async (req, res) => {
   }
 });
 
+// Also allow POST with client-provided config
+app.post('/api/db/stats', async (req, res) => {
+  try {
+    const bodyConfig = req.body || {};
+    if (bodyConfig.host) {
+      await db.createConnection(bodyConfig);
+    } else if (!db.pool) {
+      await db.createConnection({
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        username: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+        useSSL: process.env.DB_SSL === 'true'
+      });
+    }
+
+    const stats = await db.getTableStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro ao obter estatísticas', error: error.message });
+  }
+});
+
 app.post('/api/db/import', async (req, res) => {
   try {
-    if (!db.pool) {
+    const { config: bodyConfig, data } = req.body || {};
+
+    if (bodyConfig) {
+      await db.createConnection(bodyConfig);
+    } else if (!db.pool) {
       await db.createConnection({
         host: process.env.DB_HOST,
         port: process.env.DB_PORT,
@@ -123,7 +153,8 @@ app.post('/api/db/import', async (req, res) => {
       });
     }
     
-    const result = await db.importData(req.body);
+    const payload = data || req.body;
+    const result = await db.importData(payload);
     res.json(result);
   } catch (error) {
     res.status(500).json({

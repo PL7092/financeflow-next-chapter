@@ -212,9 +212,8 @@ export const SettingsManager: React.FC = () => {
     try {
       const response = await fetch('/api/db/init', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbSettings),
       });
       
       const result = await response.json();
@@ -246,7 +245,11 @@ export const SettingsManager: React.FC = () => {
 
   const loadDatabaseStats = async () => {
     try {
-      const response = await fetch('/api/db/stats');
+      const response = await fetch('/api/db/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbSettings),
+      });
       const result = await response.json();
       
       if (result.success) {
@@ -272,10 +275,8 @@ export const SettingsManager: React.FC = () => {
       
       const response = await fetch('/api/db/import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(localData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: dbSettings, data: localData }),
       });
       
       const result = await response.json();
