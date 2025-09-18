@@ -33,9 +33,9 @@ export const TransactionManager: React.FC = () => {
         (t.tags && t.tags.some(tag => tag.toLowerCase().includes(filters.search.toLowerCase())));
 
       const matchesType = filters.type === 'all' || t.type === filters.type;
-      const matchesCategory = filters.category === 'all' || t.category === filters.category;
+      const matchesCategory = filters.category === 'all' || t.categoryId === filters.category;
       const matchesEntity = filters.entity === 'all' || t.entity === filters.entity;
-      const matchesAccount = filters.account === 'all' || t.account === filters.account;
+      const matchesAccount = filters.account === 'all' || t.accountId === filters.account;
 
       const matchesDateFrom = filters.dateFrom === '' || new Date(t.date) >= new Date(filters.dateFrom);
       const matchesDateTo = filters.dateTo === '' || new Date(t.date) <= new Date(filters.dateTo);
@@ -129,9 +129,9 @@ export const TransactionManager: React.FC = () => {
         formatDatePT(t.date),
         getTransactionTypeLabel(t.type),
         t.description,
-        t.category,
+        categories.find(c => c.id === t.categoryId)?.name || 'N/A',
         t.entity || '',
-        t.account,
+        accounts.find(a => a.id === t.accountId)?.name || 'N/A',
         t.amount.toFixed(2),
         (t.tags || []).join('; ')
       ].map(field => `"${field}"`).join(','))
@@ -413,8 +413,8 @@ export const TransactionManager: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{transaction.category}</TableCell>
-                      <TableCell>{transaction.account}</TableCell>
+                      <TableCell>{categories.find(c => c.id === transaction.categoryId)?.name || 'N/A'}</TableCell>
+                      <TableCell>{accounts.find(a => a.id === transaction.accountId)?.name || 'N/A'}</TableCell>
                       <TableCell className="text-right">
                         <span className={
                           transaction.type === 'income' 

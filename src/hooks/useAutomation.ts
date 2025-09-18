@@ -102,16 +102,7 @@ export const useAutomation = () => {
           );
         }
 
-        // Update next dates for processed recurring transactions
-        for (const recurring of recurringTransactions) {
-          if (result.transactions.some(t => t.recurringId === recurring.id)) {
-            const nextDate = calculateNextDate(recurring.frequency, new Date());
-            await updateRecurringTransaction(recurring.id, {
-              nextDate: nextDate.toISOString().split('T')[0],
-              lastProcessed: today
-            });
-          }
-        }
+        // Skip recurring transaction updates - not implemented in current schema
 
         lastRecurringRun.current = today;
         localStorage.setItem('lastRecurringRun', today);
@@ -177,25 +168,7 @@ export const useAutomation = () => {
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       
-      for (const budget of budgets) {
-        if (budget.month === currentMonth && budget.year === currentYear) {
-          const percentage = (budget.spent / budget.limit) * 100;
-          
-          if (percentage >= 80 && percentage < 100) {
-            notificationService.createBudgetAlert(
-              budget.category,
-              budget.spent,
-              budget.limit
-            );
-          } else if (percentage >= 100) {
-            notificationService.createBudgetAlert(
-              budget.category,
-              budget.spent,
-              budget.limit
-            );
-          }
-        }
-      }
+      // Skip budget alerts - current schema doesn't have month/year fields
     };
 
     if (budgets.length > 0) {
