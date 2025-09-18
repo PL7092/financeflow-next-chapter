@@ -34,7 +34,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // Serve React app for all other routes
-app.get('/*', (req, res) => {
+app.get('/:path(.*)', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../dist/index.html'));
 });
 
