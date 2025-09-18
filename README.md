@@ -62,37 +62,36 @@ Uma aplicação web completa de gestão financeira pessoal desenvolvida com Reac
 
 **Passo 1:** Instale o plugin Compose Manager
 - Aceda a **Community Applications**
-- Procure por "Compose Manager"
+- Procure por "Compose Manager" 
 - Instale o plugin e reinicie se necessário
 
-**Passo 2:** Crie a stack do Personal Finance Manager
+**Passo 2:** Configure um Container MariaDB Existente (se não tiver)
+Se ainda não tem um container MariaDB no Unraid, crie um primeiro:
+1. Aceda ao **Docker** tab no Unraid
+2. Clique em **Add Container**
+3. Configure:
+   - **Nome**: `mariadb-financeflow`
+   - **Repository**: `mariadb:10.11`
+   - **Network Type**: `bridge` ou `Custom: br0`
+   - **Port Mappings**: `3306:3306`
+   - **Variables**:
+     - `MYSQL_ROOT_PASSWORD`: `sua_password_root_segura`
+     - `MYSQL_DATABASE`: `personal_finance`
+     - `MYSQL_USER`: `finance_user`
+     - `MYSQL_PASSWORD`: `sua_password_user_segura`
+   - **Volumes**: `/mnt/user/appdata/mariadb-financeflow:/var/lib/mysql`
+
+**Passo 3:** Crie a stack do Personal Finance Manager
 1. Aceda ao **Compose Manager** no menu do Unraid
 2. Clique em **Add New Stack**
 3. Nome da Stack: `personal-finance`
-4. Cole o seguinte docker-compose.yml:
+4. **IMPORTANTE**: Substitua `SEU_CONTAINER_MARIADB` pelo nome real do seu container MariaDB
+5. Cole o seguinte docker-compose.yml:
 
 ```yaml
 version: '3.8'
 
 services:
-  mariadb:
-    image: mariadb:10.11
-    container_name: personal-finance-db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: finance_root_password_2024
-      MYSQL_DATABASE: personal_finance
-      MYSQL_USER: finance_user
-      MYSQL_PASSWORD: finance_user_password_2024
-    volumes:
-      - /mnt/user/appdata/personal-finance/mariadb:/var/lib/mysql
-    networks:
-      - finance-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
-
   app:
     build:
       context: https://github.com/PL7092/financeflow-next-chapter.git
@@ -104,42 +103,46 @@ services:
       - "3000:3000"
     volumes:
       - /mnt/user/appdata/personal-finance/uploads:/app/uploads
+      - /mnt/user/appdata/personal-finance/config:/app/config
     environment:
       NODE_ENV: production
-      DB_HOST: mariadb
+      # Estas configurações serão sobrescritas pelas definições na aplicação
+      DB_HOST: SEU_CONTAINER_MARIADB  # SUBSTITUA pelo nome do seu container MariaDB
       DB_PORT: 3306
       DB_NAME: personal_finance
       DB_USER: finance_user
-      DB_PASSWORD: finance_user_password_2024
+      DB_PASSWORD: sua_password_user_segura  # SUBSTITUA pela sua password
       DB_SSL: false
       UPLOAD_DIR: /app/uploads
-    networks:
-      - finance-network
-    depends_on:
-      mariadb:
-        condition: service_healthy
-
-networks:
-  finance-network:
-    driver: bridge
-
-volumes:
-  mariadb_data:
-  app_data:
+    # Liga ao container MariaDB existente
+    external_links:
+      - SEU_CONTAINER_MARIADB:mariadb  # SUBSTITUA pelo nome do seu container MariaDB
 ```
 
-**Passo 3:** Inicie a stack
-1. Clique em **Compose Up** para criar e iniciar os containers
-2. Aguarde o download das imagens e instalação das dependências (primeira execução pode demorar 5-10 minutos)
-3. Aceda à aplicação em `http://[IP_DO_UNRAID]:3000`
+**Passo 4:** Inicie a stack
+1. **IMPORTANTE**: Certifique-se que o container MariaDB está a funcionar antes de continuar
+2. Clique em **Compose Up** para criar e iniciar a aplicação
+3. Aguarde o download das imagens e compilação (primeira execução pode demorar 5-10 minutos)
+4. Aceda à aplicação em `http://[IP_DO_UNRAID]:3000`
 
 ### Configuração Pós-Instalação
 
 Após a instalação bem-sucedida:
-1. Aceda à aplicação: `http://[IP_DO_UNRAID]:3000`
-2. Crie a sua conta de administrador
-3. Configure as suas contas financeiras
-4. Importe dados existentes se necessário
+1. **Aceda à aplicação**: `http://[IP_DO_UNRAID]:3000`
+2. **Configure a Base de Dados**:
+   - Vá para **Configurações** > **Base de Dados**
+   - **Servidor**: Nome ou IP do container MariaDB (ex: `mariadb-financeflow` ou IP do Unraid)
+   - **Porto**: `3306`
+   - **Nome da Base de Dados**: `personal_finance`
+   - **Utilizador**: `finance_user` (ou conforme configurou no MariaDB)
+   - **Palavra-passe**: A password configurada no container MariaDB
+   - Clique **Testar Ligação** para verificar
+   - Clique **Guardar** se o teste for bem-sucedido
+3. **Crie a sua conta de administrador**
+4. **Configure as suas contas financeiras**
+5. **Importe dados existentes se necessário**
+
+> **Nota**: As configurações da base de dados na aplicação têm precedência sobre as variáveis de ambiente do Docker.
 
 ### Gestão da Stack
 
@@ -161,9 +164,15 @@ docker logs personal-finance-db
 **Para backup dos dados:**
 ```bash
 # Os dados ficam guardados em:
-# /mnt/user/appdata/personal-finance/mariadb (base de dados)
+# /mnt/user/appdata/[SEU_CONTAINER_MARIADB] (base de dados - conforme configurado no seu MariaDB)
 # /mnt/user/appdata/personal-finance/uploads (ficheiros enviados)
+# /mnt/user/appdata/personal-finance/config (configurações da aplicação)
 ```
+
+**Para alterar configurações da base de dados:**
+- Use sempre a interface da aplicação: **Configurações** > **Base de Dados**
+- As definições na aplicação sobrepõem-se às variáveis de ambiente
+- Teste sempre a ligação antes de guardar as alterações
 
 ### 3. Configuração Inicial
 
