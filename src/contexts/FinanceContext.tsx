@@ -3,107 +3,96 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 // Types
 export interface Transaction {
   id: string;
-  type: 'income' | 'expense' | 'transfer';
   amount: number;
   description: string;
-  category: string;
-  entity?: string;
-  account: string;
+  type: 'income' | 'expense' | 'transfer';
+  categoryId?: string;
+  accountId: string;
   date: string;
   tags?: string[];
-  recurringId?: string;
-  created_at: string;
+  notes?: string;
+  receiptUrl?: string;
+  location?: string;
+  entity?: string;
+  isReconciled?: boolean;
+  // From database views
+  category_name?: string;
+  category_color?: string;
+  account_name?: string;
 }
 
 export interface Budget {
   id: string;
-  category: string;
-  limit: number;
+  name: string;
+  amount: number;
   spent: number;
-  month: number;
-  year: number;
-  created_at: string;
+  categoryId?: string;
+  period: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  startDate: string;
+  endDate: string;
+  alertThreshold?: number;
+  isActive: boolean;
+  // From database views
+  category_name?: string;
+  category_color?: string;
 }
 
 export interface Account {
   id: string;
   name: string;
-  type: 'checking' | 'savings' | 'credit' | 'investment';
+  type: 'checking' | 'savings' | 'credit' | 'investment' | 'cash' | 'other';
   balance: number;
   currency: string;
+  bankName?: string;
+  accountNumber?: string;
+  isActive: boolean;
   created_at: string;
 }
 
 export interface Investment {
   id: string;
   name: string;
-  type: string;
-  amount: number;
-  currentValue: number;
-  return: number;
-  returnPercentage: number;
-  created_at: string;
+  symbol?: string;
+  type: 'stock' | 'bond' | 'mutual_fund' | 'etf' | 'crypto' | 'real_estate' | 'other';
+  quantity: number;
+  purchasePrice: number;
+  currentPrice: number;
+  marketValue: number;
+  gainLoss: number;
+  gainLossPercentage: number;
+  purchaseDate?: string;
+  accountId?: string;
+  // Computed values
+  currentValue?: number;
+  totalCost?: number;
 }
 
 export interface RecurringTransaction {
   id: string;
-  type: 'income' | 'expense';
   amount: number;
   description: string;
-  category: string;
-  account: string;
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  nextDate: string;
-  isActive: boolean;
-  created_at: string;
-  // Enhanced features
-  expectedAmount?: number;
-  tolerancePercentage?: number;
-  alertOnVariation?: boolean;
-  aiRecommendations?: {
-    suggestedAmount?: number;
-    reason?: string;
-    confidence?: number;
-  };
+  type: 'income' | 'expense';
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+  categoryId?: string;
+  accountId: string;
+  startDate: string;
+  endDate?: string;
+  nextOccurrence: string;
   lastProcessed?: string;
-  variationHistory?: Array<{
-    date: string;
-    expected: number;
-    actual: number;
-    variance: number;
-  }>;
+  occurrenceCount: number;
+  isActive: boolean;
 }
 
 export interface Asset {
   id: string;
   name: string;
-  type: string;
-  value: number;
-  purchaseDate: string;
-  created_at: string;
-  // Enhanced features
+  type: 'property' | 'vehicle' | 'collectible' | 'other';
   purchasePrice?: number;
-  maintenanceCosts?: Array<{
-    id: string;
-    date: string;
-    description: string;
-    amount: number;
-    type: 'maintenance' | 'insurance' | 'tax' | 'other';
-  }>;
-  associatedTransactions?: string[]; // Transaction IDs
-  documents?: Array<{
-    id: string;
-    name: string;
-    type: 'invoice' | 'warranty' | 'insurance' | 'manual' | 'other';
-    url?: string;
-    uploadDate: string;
-  }>;
-  depreciation?: {
-    method: 'linear' | 'accelerated' | 'none';
-    rate?: number;
-    usefulLife?: number;
-  };
-  notes?: string;
+  currentValue?: number;
+  purchaseDate?: string;
+  description?: string;
+  depreciationRate?: number;
+  created_at: string;
 }
 
 export interface SavingsGoal {
@@ -111,58 +100,28 @@ export interface SavingsGoal {
   name: string;
   targetAmount: number;
   currentAmount: number;
-  targetDate: string;
-  created_at: string;
-  // Enhanced features
-  category?: string;
+  targetDate?: string;
+  description?: string;
   priority: 'low' | 'medium' | 'high';
-  autoContributions?: {
-    enabled: boolean;
-    amount?: number;
-    frequency?: 'weekly' | 'monthly';
-    accountId?: string;
-    conditions?: Array<{
-      type: 'transaction_match' | 'surplus_detection' | 'scheduled';
-      pattern?: string; // For transaction matching
-      percentage?: number; // For surplus detection
-    }>;
-  };
-  milestones?: Array<{
-    id: string;
-    amount: number;
-    description: string;
-    achieved: boolean;
-    achievedDate?: string;
-  }>;
-  associatedTransactions?: string[]; // Transaction IDs that contributed
-  notes?: string;
+  isCompleted: boolean;
+  accountId?: string;
+  created_at: string;
 }
 
 export interface Category {
   id: string;
   name: string;
-  type: 'income' | 'expense';
+  type?: 'income' | 'expense';
   color: string;
-  // Enhanced features
-  parentId?: string; // For subcategories
   icon?: string;
-  keywords?: string[]; // For AI categorization
   isActive: boolean;
+  isSystem?: boolean;
 }
 
 export interface Entity {
   id: string;
   name: string;
   type: string;
-  // Enhanced features
-  aliases?: string[]; // Alternative names for matching
-  defaultCategory?: string;
-  defaultSubcategory?: string;
-  notes?: string;
-  transactionPatterns?: Array<{
-    pattern: string;
-    confidence: number;
-  }>;
   isActive: boolean;
 }
 
@@ -170,16 +129,10 @@ export interface AIRule {
   id: string;
   name: string;
   description: string;
-  condition: string; // e.g., "description contains 'netflix'"
-  targetCategory?: string;
-  targetSubcategory?: string;
-  targetEntity?: string;
-  confidence: number;
-  priority: number;
+  conditions: any[];
+  actions: any[];
   isActive: boolean;
   created_at: string;
-  lastUsed?: string;
-  successRate?: number; // Percentage of correct categorizations
 }
 
 interface FinanceContextType {
@@ -194,40 +147,45 @@ interface FinanceContextType {
   categories: Category[];
   entities: Entity[];
   aiRules: AIRule[];
-  
-  // Loading states
   isLoading: boolean;
-  
-  // Actions
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at'>) => Promise<void>;
+
+  // Transaction methods
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<Transaction>;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   
-  addBudget: (budget: Omit<Budget, 'id' | 'created_at'>) => Promise<void>;
+  // Budget methods
+  addBudget: (budget: Omit<Budget, 'id'>) => Promise<Budget>;
   updateBudget: (id: string, budget: Partial<Budget>) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
   
-  addAccount: (account: Omit<Account, 'id' | 'created_at'>) => Promise<void>;
+  // Account methods
+  addAccount: (account: Omit<Account, 'id' | 'created_at'>) => Promise<Account>;
   updateAccount: (id: string, account: Partial<Account>) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
   
-  addInvestment: (investment: Omit<Investment, 'id' | 'created_at'>) => Promise<void>;
+  // Investment methods
+  addInvestment: (investment: Omit<Investment, 'id'>) => Promise<void>;
   updateInvestment: (id: string, investment: Partial<Investment>) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
   
-  addRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id' | 'created_at'>) => Promise<void>;
+  // Recurring transaction methods
+  addRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id'>) => Promise<void>;
   updateRecurringTransaction: (id: string, transaction: Partial<RecurringTransaction>) => Promise<void>;
   deleteRecurringTransaction: (id: string) => Promise<void>;
   
+  // Asset methods
   addAsset: (asset: Omit<Asset, 'id' | 'created_at'>) => Promise<void>;
   updateAsset: (id: string, asset: Partial<Asset>) => Promise<void>;
   deleteAsset: (id: string) => Promise<void>;
   
+  // Savings goal methods
   addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'created_at'>) => Promise<void>;
   updateSavingsGoal: (id: string, goal: Partial<SavingsGoal>) => Promise<void>;
   deleteSavingsGoal: (id: string) => Promise<void>;
   
-  addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
+  // Category methods
+  addCategory: (category: Omit<Category, 'id'>) => Promise<Category>;
   updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   
@@ -252,27 +210,6 @@ export const useFinance = () => {
   return context;
 };
 
-// Mock data for development (will be replaced with MariaDB calls)
-const mockData = {
-  categories: [
-    { id: '1', name: 'Alimentação', type: 'expense' as const, color: '#FF6B6B', isActive: true },
-    { id: '2', name: 'Transporte', type: 'expense' as const, color: '#4ECDC4', isActive: true },
-    { id: '3', name: 'Entretenimento', type: 'expense' as const, color: '#45B7D1', isActive: true },
-    { id: '4', name: 'Salário', type: 'income' as const, color: '#96CEB4', isActive: true },
-    { id: '5', name: 'Freelance', type: 'income' as const, color: '#FFEAA7', isActive: true },
-  ],
-  accounts: [
-    { id: '1', name: 'Conta Principal', type: 'checking' as const, balance: 15247.85, currency: 'EUR', created_at: new Date().toISOString() },
-    { id: '2', name: 'Poupanças', type: 'savings' as const, balance: 5000.00, currency: 'EUR', created_at: new Date().toISOString() },
-    { id: '3', name: 'Cartão de Crédito', type: 'credit' as const, balance: -1500.00, currency: 'EUR', created_at: new Date().toISOString() },
-  ],
-  entities: [
-    { id: '1', name: 'Continente', type: 'Supermercado', isActive: true },
-    { id: '2', name: 'Galp', type: 'Combustível', isActive: true },
-    { id: '3', name: 'Netflix', type: 'Streaming', isActive: true },
-  ]
-};
-
 interface FinanceProviderProps {
   children: ReactNode;
 }
@@ -280,20 +217,20 @@ interface FinanceProviderProps {
 export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>(mockData.accounts);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
-  const [categories, setCategories] = useState<Category[]>(mockData.categories);
-  const [entities, setEntities] = useState<Entity[]>(mockData.entities);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [entities, setEntities] = useState<Entity[]>([]);
   const [aiRules, setAIRules] = useState<AIRule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // API Helper function for MariaDB calls
   const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('auth_token');
-    return fetch(`/api${endpoint}`, {
+    const response = await fetch(`/api${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -301,130 +238,316 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         ...options.headers,
       },
     });
+    
+    if (!response.ok) {
+      throw new Error(`API call failed: ${response.statusText}`);
+    }
+    
+    return response.json();
   };
 
-  // Transaction methods
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
+  // Load data functions
+  const loadTransactions = async () => {
     try {
-      // For Docker/MariaDB: await apiCall('/transactions', { method: 'POST', body: JSON.stringify(transaction) });
+      const response = await apiCall('/transactions');
+      if (response.success) {
+        setTransactions(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  };
+
+  const loadAccounts = async () => {
+    try {
+      const response = await apiCall('/accounts');
+      if (response.success) {
+        setAccounts(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading accounts:', error);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const response = await apiCall('/categories');
+      if (response.success) {
+        setCategories(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
+
+  const loadBudgets = async () => {
+    try {
+      const response = await apiCall('/budgets');
+      if (response.success) {
+        setBudgets(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading budgets:', error);
+    }
+  };
+
+  // Load all data from MariaDB on component mount
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  // Add Transaction - Now uses MariaDB
+  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/transactions', {
+        method: 'POST',
+        body: JSON.stringify(transaction),
+      });
       
-      // Mock implementation
-      const newTransaction: Transaction = {
-        ...transaction,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
-      };
-      setTransactions(prev => [newTransaction, ...prev]);
-      
-      // Update budget spent amount if expense
-      if (transaction.type === 'expense') {
-        setBudgets(prev => prev.map(budget => 
-          budget.category === transaction.category
-            ? { ...budget, spent: budget.spent + transaction.amount }
-            : budget
-        ));
+      if (response.success) {
+        setTransactions(prev => [response.data, ...prev]);
+        // Refresh accounts to update balances
+        await loadAccounts();
+        return response.data;
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Update Transaction - Now uses MariaDB
   const updateTransaction = async (id: string, transaction: Partial<Transaction>) => {
     try {
-      // For Docker/MariaDB: await apiCall(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(transaction) });
+      setIsLoading(true);
+      const response = await apiCall(`/transactions/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(transaction),
+      });
       
-      setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...transaction } : t));
+      if (response.success) {
+        setTransactions(prev => prev.map(t => t.id === id ? response.data : t));
+        // Refresh accounts to update balances
+        await loadAccounts();
+      }
     } catch (error) {
       console.error('Error updating transaction:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Delete Transaction - Now uses MariaDB
   const deleteTransaction = async (id: string) => {
     try {
-      // For Docker/MariaDB: await apiCall(`/transactions/${id}`, { method: 'DELETE' });
+      setIsLoading(true);
+      const response = await apiCall(`/transactions/${id}`, {
+        method: 'DELETE',
+      });
       
-      setTransactions(prev => prev.filter(t => t.id !== id));
+      if (response.success) {
+        setTransactions(prev => prev.filter(t => t.id !== id));
+        // Refresh accounts to update balances
+        await loadAccounts();
+      }
     } catch (error) {
       console.error('Error deleting transaction:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Budget methods
-  const addBudget = async (budget: Omit<Budget, 'id' | 'created_at'>) => {
-    try {
-      const newBudget: Budget = {
-        ...budget,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
-      };
-      setBudgets(prev => [...prev, newBudget]);
-    } catch (error) {
-      console.error('Error adding budget:', error);
-      throw error;
-    }
-  };
-
-  const updateBudget = async (id: string, budget: Partial<Budget>) => {
-    try {
-      setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...budget } : b));
-    } catch (error) {
-      console.error('Error updating budget:', error);
-      throw error;
-    }
-  };
-
-  const deleteBudget = async (id: string) => {
-    try {
-      setBudgets(prev => prev.filter(b => b.id !== id));
-    } catch (error) {
-      console.error('Error deleting budget:', error);
-      throw error;
-    }
-  };
-
-  // Account methods
+  // Add Account - Now uses MariaDB
   const addAccount = async (account: Omit<Account, 'id' | 'created_at'>) => {
     try {
-      const newAccount: Account = {
-        ...account,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
-      };
-      setAccounts(prev => [...prev, newAccount]);
+      setIsLoading(true);
+      const response = await apiCall('/accounts', {
+        method: 'POST',
+        body: JSON.stringify(account),
+      });
+      
+      if (response.success) {
+        setAccounts(prev => [...prev, response.data]);
+        return response.data;
+      }
     } catch (error) {
       console.error('Error adding account:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Update Account - Now uses MariaDB
   const updateAccount = async (id: string, account: Partial<Account>) => {
     try {
-      setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...account } : a));
+      setIsLoading(true);
+      const response = await apiCall(`/accounts/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(account),
+      });
+      
+      if (response.success) {
+        setAccounts(prev => prev.map(a => a.id === id ? response.data : a));
+      }
     } catch (error) {
       console.error('Error updating account:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Delete Account - Now uses MariaDB
   const deleteAccount = async (id: string) => {
     try {
-      setAccounts(prev => prev.filter(a => a.id !== id));
+      setIsLoading(true);
+      const response = await apiCall(`/accounts/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        setAccounts(prev => prev.filter(a => a.id !== id));
+      }
     } catch (error) {
       console.error('Error deleting account:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Investment methods
-  const addInvestment = async (investment: Omit<Investment, 'id' | 'created_at'>) => {
+  // Add Category - Now uses MariaDB
+  const addCategory = async (category: Omit<Category, 'id'>) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/categories', {
+        method: 'POST',
+        body: JSON.stringify(category),
+      });
+      
+      if (response.success) {
+        setCategories(prev => [...prev, response.data]);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update Category - Now uses MariaDB
+  const updateCategory = async (id: string, category: Partial<Category>) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/categories/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(category),
+      });
+      
+      if (response.success) {
+        setCategories(prev => prev.map(c => c.id === id ? response.data : c));
+      }
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete Category - Now uses MariaDB
+  const deleteCategory = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/categories/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        setCategories(prev => prev.filter(c => c.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Add Budget - Now uses MariaDB
+  const addBudget = async (budget: Omit<Budget, 'id'>) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/budgets', {
+        method: 'POST',
+        body: JSON.stringify(budget),
+      });
+      
+      if (response.success) {
+        setBudgets(prev => [...prev, response.data]);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error adding budget:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update Budget - Now uses MariaDB
+  const updateBudget = async (id: string, budget: Partial<Budget>) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/budgets/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(budget),
+      });
+      
+      if (response.success) {
+        setBudgets(prev => prev.map(b => b.id === id ? response.data : b));
+      }
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete Budget - Now uses MariaDB
+  const deleteBudget = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/budgets/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        setBudgets(prev => prev.filter(b => b.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Investment methods (keeping mock for now - TODO: implement MariaDB endpoints)
+  const addInvestment = async (investment: Omit<Investment, 'id'>) => {
     try {
       const newInvestment: Investment = {
         ...investment,
         id: Date.now().toString(),
-        created_at: new Date().toISOString(),
       };
       setInvestments(prev => [...prev, newInvestment]);
     } catch (error) {
@@ -451,13 +574,12 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
-  // Recurring transaction methods
-  const addRecurringTransaction = async (transaction: Omit<RecurringTransaction, 'id' | 'created_at'>) => {
+  // Recurring transaction methods (keeping mock for now)
+  const addRecurringTransaction = async (transaction: Omit<RecurringTransaction, 'id'>) => {
     try {
       const newTransaction: RecurringTransaction = {
         ...transaction,
         id: Date.now().toString(),
-        created_at: new Date().toISOString(),
       };
       setRecurringTransactions(prev => [...prev, newTransaction]);
     } catch (error) {
@@ -484,7 +606,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
-  // Asset methods
+  // Asset methods (keeping mock for now)
   const addAsset = async (asset: Omit<Asset, 'id' | 'created_at'>) => {
     try {
       const newAsset: Asset = {
@@ -517,7 +639,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
-  // Savings goal methods
+  // Savings goal methods (keeping mock for now)
   const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'created_at'>) => {
     try {
       const newGoal: SavingsGoal = {
@@ -550,39 +672,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
-  // Category methods
-  const addCategory = async (category: Omit<Category, 'id'>) => {
-    try {
-      const newCategory: Category = {
-        ...category,
-        id: Date.now().toString(),
-      };
-      setCategories(prev => [...prev, newCategory]);
-    } catch (error) {
-      console.error('Error adding category:', error);
-      throw error;
-    }
-  };
-
-  const updateCategory = async (id: string, category: Partial<Category>) => {
-    try {
-      setCategories(prev => prev.map(c => c.id === id ? { ...c, ...category } : c));
-    } catch (error) {
-      console.error('Error updating category:', error);
-      throw error;
-    }
-  };
-
-  const deleteCategory = async (id: string) => {
-    try {
-      setCategories(prev => prev.filter(c => c.id !== id));
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      throw error;
-    }
-  };
-
-  // Entity methods
+  // Entity methods (keeping mock for now)
   const addEntity = async (entity: Omit<Entity, 'id'>) => {
     try {
       const newEntity: Entity = {
@@ -614,7 +704,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
-  // AI Rules methods
+  // AI Rules methods (keeping mock for now)
   const addAIRule = async (rule: Omit<AIRule, 'id' | 'created_at'>) => {
     try {
       const newRule: AIRule = {
@@ -650,15 +740,14 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const refreshData = async () => {
     setIsLoading(true);
     try {
-      // For Docker/MariaDB: fetch all data from backend
-      // const [transactionsRes, budgetsRes, accountsRes, ...] = await Promise.all([
-      //   apiCall('/transactions'),
-      //   apiCall('/budgets'),
-      //   apiCall('/accounts'),
-      //   // ... other endpoints
-      // ]);
-      
-      // Mock implementation - in production, load from MariaDB
+      // Load all data from MariaDB
+      await Promise.all([
+        loadTransactions(),
+        loadBudgets(),
+        loadAccounts(),
+        loadCategories(),
+        // TODO: Add other data loading functions when implemented
+      ]);
       console.log('Data refreshed from MariaDB');
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -666,10 +755,6 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    refreshData();
-  }, []);
 
   const value = {
     // Data
@@ -684,8 +769,8 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     entities,
     aiRules,
     isLoading,
-    
-    // Actions
+
+    // Methods
     addTransaction,
     updateTransaction,
     deleteTransaction,
