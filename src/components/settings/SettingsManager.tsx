@@ -59,14 +59,17 @@ export const SettingsManager: React.FC = () => {
   });
 
   // AI Settings
-  const [aiSettings, setAiSettings] = useState({
-    openaiApiKey: '',
-    anthropicApiKey: '',
-    geminiApiKey: '',
-    defaultProvider: 'openai',
-    enableAutoCategories: true,
-    enableSmartRecommendations: true,
-    confidenceThreshold: 0.8,
+  const [aiSettings, setAiSettings] = useState(() => {
+    const saved = localStorage.getItem('aiSettings');
+    return saved ? JSON.parse(saved) : {
+      openaiApiKey: '',
+      anthropicApiKey: '',
+      geminiApiKey: '',
+      defaultProvider: 'openai',
+      enableAutoCategories: true,
+      enableSmartRecommendations: true,
+      confidenceThreshold: 0.8,
+    };
   });
 
   // Database Settings
@@ -113,16 +116,25 @@ export const SettingsManager: React.FC = () => {
   };
 
   const handleAiSettingsSave = () => {
-    // Save AI settings (sensitive data should be encrypted)
-    const sanitizedSettings = { ...aiSettings };
-    // Don't store API keys in localStorage in production
-    delete sanitizedSettings.openaiApiKey;
-    delete sanitizedSettings.anthropicApiKey;
-    delete sanitizedSettings.geminiApiKey;
-    
-    localStorage.setItem('aiSettings', JSON.stringify(sanitizedSettings));
-    console.log('Saving AI settings:', sanitizedSettings);
-    // In production: await saveAiSettings(aiSettings);
+    try {
+      // Save all AI settings including API keys to localStorage
+      // Note: For production use, connect to Supabase for secure storage
+      localStorage.setItem('aiSettings', JSON.stringify(aiSettings));
+      
+      toast({
+        title: "Configurações Salvas",
+        description: "Configurações de IA foram salvas com sucesso",
+      });
+      
+      console.log('AI settings saved successfully');
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar configurações de IA",
+        variant: "destructive",
+      });
+      console.error('Error saving AI settings:', error);
+    }
   };
 
   const handleDatabaseSave = async () => {

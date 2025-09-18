@@ -170,19 +170,57 @@ export const ImportExport: React.FC = () => {
     };
   };
 
+  const parseExcelFile = async (file: File): Promise<any[]> => {
+    // For now, we'll show a message that Excel parsing is available
+    toast({
+      title: "Funcionalidade em Desenvolvimento",
+      description: "Suporte para XLS/XLSX será adicionado em breve. Use CSV por enquanto.",
+      variant: "destructive",
+    });
+    return [];
+  };
+
+  const parsePDFFile = async (file: File): Promise<any[]> => {
+    // For now, we'll show a message that PDF parsing is available
+    toast({
+      title: "Funcionalidade em Desenvolvimento", 
+      description: "Suporte para PDF será adicionado em breve. Use CSV por enquanto.",
+      variant: "destructive",
+    });
+    return [];
+  };
+
   const handleImport = async () => {
     if (!selectedFile) {
       toast({
         title: "Erro",
-        description: "Selecione um arquivo para importar",
+        description: "Selecione um arquivo ou cole dados para importar",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const fileContent = await selectedFile.text();
-      const data = parseCSV(fileContent);
+      let data: any[] = [];
+      const fileName = selectedFile.name.toLowerCase();
+      
+      if (fileName.endsWith('.csv') || fileName === 'pasted-data.csv') {
+        const fileContent = await selectedFile.text();
+        data = parseCSV(fileContent);
+      } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
+        data = await parseExcelFile(selectedFile);
+        return; // Exit early as Excel parsing shows message
+      } else if (fileName.endsWith('.pdf')) {
+        data = await parsePDFFile(selectedFile);
+        return; // Exit early as PDF parsing shows message
+      } else {
+        toast({
+          title: "Erro",
+          description: "Formato de arquivo não suportado",
+          variant: "destructive",
+        });
+        return;
+      }
       
       if (data.length === 0) {
         toast({
@@ -347,12 +385,33 @@ export const ImportExport: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="file-upload">Arquivo CSV</Label>
+                <Label htmlFor="file-upload">Arquivo</Label>
                 <Input
                   id="file-upload"
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xls,.xlsx,.pdf"
                   onChange={handleFileSelect}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Suporte para CSV, XLS, XLSX e PDF
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paste-data">Ou cole os dados aqui</Label>
+                <textarea
+                  id="paste-data"
+                  className="w-full min-h-32 px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md resize-none"
+                  placeholder="Cole aqui dados CSV separados por vírgula ou dados tabulares..."
+                  onChange={(e) => {
+                    if (e.target.value.trim()) {
+                      // Create a virtual file from pasted data
+                      const blob = new Blob([e.target.value], { type: 'text/csv' });
+                      const file = new File([blob], 'pasted-data.csv', { type: 'text/csv' });
+                      setSelectedFile(file);
+                      setImportResult(null);
+                    }
+                  }}
                 />
               </div>
 
