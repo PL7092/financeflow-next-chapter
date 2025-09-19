@@ -6,9 +6,11 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { PlusCircle, Target, TrendingUp, Calendar } from 'lucide-react';
 import { toast } from '../ui/use-toast';
+import { SavingsForm } from './SavingsForm';
 
 export const SavingsManager: React.FC = () => {
-  const { savingsGoals, deleteSavingsGoal } = useFinance();
+  const { addSavingsGoal, savingsGoals, deleteSavingsGoal } = useFinance();
+  const [showForm, setShowForm] = useState(false);
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta meta de poupança?')) {
@@ -35,7 +37,7 @@ export const SavingsManager: React.FC = () => {
           <h1 className="text-2xl font-bold">Metas de Poupança</h1>
           <p className="text-muted-foreground">Defina e acompanhe suas metas financeiras</p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" onClick={() => setShowForm(true)}>
           <PlusCircle size={16} />
           Nova Meta
         </Button>
@@ -115,6 +117,8 @@ export const SavingsManager: React.FC = () => {
           })
         )}
       </div>
+      
+      <SavingsForm open={showForm} onOpenChange={setShowForm} />
     </div>
   );
 };

@@ -5,9 +5,11 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { PlusCircle, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import { toast } from '../ui/use-toast';
+import { InvestmentForm } from './InvestmentForm';
 
 export const InvestmentManager: React.FC = () => {
-  const { investments, deleteInvestment } = useFinance();
+  const { addInvestment, investments, deleteInvestment } = useFinance();
+  const [showForm, setShowForm] = useState(false);
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este investimento?')) {
@@ -39,7 +41,7 @@ export const InvestmentManager: React.FC = () => {
           <h1 className="text-2xl font-bold">Investimentos</h1>
           <p className="text-muted-foreground">Gerencie sua carteira de investimentos</p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" onClick={() => setShowForm(true)}>
           <PlusCircle size={16} />
           Novo Investimento
         </Button>
@@ -138,6 +140,8 @@ export const InvestmentManager: React.FC = () => {
           </div>
         )}
       </Card>
+
+      <InvestmentForm open={showForm} onOpenChange={setShowForm} />
     </div>
   );
 };

@@ -165,22 +165,22 @@ interface FinanceContextType {
   deleteAccount: (id: string) => Promise<void>;
   
   // Investment methods
-  addInvestment: (investment: Omit<Investment, 'id'>) => Promise<void>;
+  addInvestment: (investment: Omit<Investment, 'id'>) => Promise<Investment>;
   updateInvestment: (id: string, investment: Partial<Investment>) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
   
   // Recurring transaction methods
-  addRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id'>) => Promise<void>;
+  addRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id'>) => Promise<RecurringTransaction>;
   updateRecurringTransaction: (id: string, transaction: Partial<RecurringTransaction>) => Promise<void>;
   deleteRecurringTransaction: (id: string) => Promise<void>;
   
   // Asset methods
-  addAsset: (asset: Omit<Asset, 'id' | 'created_at'>) => Promise<void>;
+  addAsset: (asset: Omit<Asset, 'id' | 'created_at'>) => Promise<Asset>;
   updateAsset: (id: string, asset: Partial<Asset>) => Promise<void>;
   deleteAsset: (id: string) => Promise<void>;
   
   // Savings goal methods
-  addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'created_at'>) => Promise<void>;
+  addSavingsGoal: (goal: Omit<SavingsGoal, 'id' | 'created_at'>) => Promise<SavingsGoal>;
   updateSavingsGoal: (id: string, goal: Partial<SavingsGoal>) => Promise<void>;
   deleteSavingsGoal: (id: string) => Promise<void>;
   
@@ -325,7 +325,101 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         category_id: transaction.categoryId ?? null,
         account_id: transaction.accountId,
         date: transaction.date,
-      };
+  };
+
+  const loadInvestments = async () => {
+    try {
+      const response = await apiCall('/investments');
+      if (response.success) {
+        setInvestments(response.data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          symbol: row.symbol,
+          type: row.type,
+          quantity: row.quantity,
+          purchasePrice: row.purchase_price,
+          currentPrice: row.current_price,
+          marketValue: row.market_value,
+          gainLoss: row.gain_loss,
+          gainLossPercentage: row.gain_loss_percentage,
+          purchaseDate: row.purchase_date,
+          accountId: row.account_id ?? undefined,
+          currentValue: row.current_price * row.quantity,
+          totalCost: row.purchase_price * row.quantity,
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading investments:', error);
+    }
+  };
+
+  const loadRecurringTransactions = async () => {
+    try {
+      const response = await apiCall('/recurring-transactions');
+      if (response.success) {
+        setRecurringTransactions(response.data.map((row: any) => ({
+          id: row.id,
+          amount: row.amount,
+          description: row.description,
+          type: row.type,
+          frequency: row.frequency,
+          categoryId: row.category_id ?? undefined,
+          accountId: row.account_id,
+          startDate: row.start_date,
+          endDate: row.end_date,
+          nextOccurrence: row.next_occurrence,
+          lastProcessed: row.last_processed,
+          occurrenceCount: row.occurrence_count,
+          isActive: row.is_active,
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading recurring transactions:', error);
+    }
+  };
+
+  const loadAssets = async () => {
+    try {
+      const response = await apiCall('/assets');
+      if (response.success) {
+        setAssets(response.data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          purchasePrice: row.purchase_price,
+          currentValue: row.current_value,
+          purchaseDate: row.purchase_date,
+          description: row.description,
+          depreciationRate: row.depreciation_rate,
+          created_at: row.created_at,
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading assets:', error);
+    }
+  };
+
+  const loadSavingsGoals = async () => {
+    try {
+      const response = await apiCall('/savings-goals');
+      if (response.success) {
+        setSavingsGoals(response.data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          targetAmount: row.target_amount,
+          currentAmount: row.current_amount,
+          targetDate: row.target_date,
+          description: row.description,
+          priority: row.priority,
+          isCompleted: row.is_completed,
+          accountId: row.account_id ?? undefined,
+          created_at: row.created_at,
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading savings goals:', error);
+    }
+  };
       const response = await apiCall('/transactions', {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -608,133 +702,235 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
-  // Investment methods (keeping mock for now - TODO: implement MariaDB endpoints)
+  // Investment methods - Now uses MariaDB
   const addInvestment = async (investment: Omit<Investment, 'id'>) => {
     try {
-      const newInvestment: Investment = {
-        ...investment,
-        id: Date.now().toString(),
-      };
-      setInvestments(prev => [...prev, newInvestment]);
+      setIsLoading(true);
+      const response = await apiCall('/investments', {
+        method: 'POST',
+        body: JSON.stringify(investment),
+      });
+      
+      if (response.success) {
+        setInvestments(prev => [...prev, response.data]);
+        return response.data;
+      }
     } catch (error) {
       console.error('Error adding investment:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const updateInvestment = async (id: string, investment: Partial<Investment>) => {
     try {
-      setInvestments(prev => prev.map(i => i.id === id ? { ...i, ...investment } : i));
+      setIsLoading(true);
+      const response = await apiCall(`/investments/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(investment),
+      });
+      
+      if (response.success) {
+        setInvestments(prev => prev.map(i => i.id === id ? response.data : i));
+      }
     } catch (error) {
       console.error('Error updating investment:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const deleteInvestment = async (id: string) => {
     try {
-      setInvestments(prev => prev.filter(i => i.id !== id));
+      setIsLoading(true);
+      const response = await apiCall(`/investments/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        setInvestments(prev => prev.filter(i => i.id !== id));
+      }
     } catch (error) {
       console.error('Error deleting investment:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Recurring transaction methods (keeping mock for now)
+  // Recurring transaction methods - Now uses MariaDB
   const addRecurringTransaction = async (transaction: Omit<RecurringTransaction, 'id'>) => {
     try {
-      const newTransaction: RecurringTransaction = {
-        ...transaction,
-        id: Date.now().toString(),
-      };
-      setRecurringTransactions(prev => [...prev, newTransaction]);
+      setIsLoading(true);
+      const response = await apiCall('/recurring-transactions', {
+        method: 'POST',
+        body: JSON.stringify(transaction),
+      });
+      
+      if (response.success) {
+        setRecurringTransactions(prev => [...prev, response.data]);
+        return response.data;
+      }
     } catch (error) {
       console.error('Error adding recurring transaction:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const updateRecurringTransaction = async (id: string, transaction: Partial<RecurringTransaction>) => {
     try {
-      setRecurringTransactions(prev => prev.map(r => r.id === id ? { ...r, ...transaction } : r));
+      setIsLoading(true);
+      const response = await apiCall(`/recurring-transactions/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(transaction),
+      });
+      
+      if (response.success) {
+        setRecurringTransactions(prev => prev.map(r => r.id === id ? response.data : r));
+      }
     } catch (error) {
       console.error('Error updating recurring transaction:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const deleteRecurringTransaction = async (id: string) => {
     try {
-      setRecurringTransactions(prev => prev.filter(r => r.id !== id));
+      setIsLoading(true);
+      const response = await apiCall(`/recurring-transactions/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        setRecurringTransactions(prev => prev.filter(r => r.id !== id));
+      }
     } catch (error) {
       console.error('Error deleting recurring transaction:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Asset methods (keeping mock for now)
+  // Asset methods - Now uses MariaDB
   const addAsset = async (asset: Omit<Asset, 'id' | 'created_at'>) => {
     try {
-      const newAsset: Asset = {
-        ...asset,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
-      };
-      setAssets(prev => [...prev, newAsset]);
+      setIsLoading(true);
+      const response = await apiCall('/assets', {
+        method: 'POST',
+        body: JSON.stringify(asset),
+      });
+      
+      if (response.success) {
+        setAssets(prev => [...prev, response.data]);
+        return response.data;
+      }
     } catch (error) {
       console.error('Error adding asset:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const updateAsset = async (id: string, asset: Partial<Asset>) => {
     try {
-      setAssets(prev => prev.map(a => a.id === id ? { ...a, ...asset } : a));
+      setIsLoading(true);
+      const response = await apiCall(`/assets/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(asset),
+      });
+      
+      if (response.success) {
+        setAssets(prev => prev.map(a => a.id === id ? response.data : a));
+      }
     } catch (error) {
       console.error('Error updating asset:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const deleteAsset = async (id: string) => {
     try {
-      setAssets(prev => prev.filter(a => a.id !== id));
+      setIsLoading(true);
+      const response = await apiCall(`/assets/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        setAssets(prev => prev.filter(a => a.id !== id));
+      }
     } catch (error) {
       console.error('Error deleting asset:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Savings goal methods (keeping mock for now)
+  // Savings goal methods - Now uses MariaDB
   const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'created_at'>) => {
     try {
-      const newGoal: SavingsGoal = {
-        ...goal,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
-      };
-      setSavingsGoals(prev => [...prev, newGoal]);
+      setIsLoading(true);
+      const response = await apiCall('/savings-goals', {
+        method: 'POST',
+        body: JSON.stringify(goal),
+      });
+      
+      if (response.success) {
+        setSavingsGoals(prev => [...prev, response.data]);
+        return response.data;
+      }
     } catch (error) {
       console.error('Error adding savings goal:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const updateSavingsGoal = async (id: string, goal: Partial<SavingsGoal>) => {
     try {
-      setSavingsGoals(prev => prev.map(g => g.id === id ? { ...g, ...goal } : g));
+      setIsLoading(true);
+      const response = await apiCall(`/savings-goals/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(goal),
+      });
+      
+      if (response.success) {
+        setSavingsGoals(prev => prev.map(g => g.id === id ? response.data : g));
+      }
     } catch (error) {
       console.error('Error updating savings goal:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const deleteSavingsGoal = async (id: string) => {
     try {
-      setSavingsGoals(prev => prev.filter(g => g.id !== id));
+      setIsLoading(true);
+      const response = await apiCall(`/savings-goals/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        setSavingsGoals(prev => prev.filter(g => g.id !== id));
+      }
     } catch (error) {
       console.error('Error deleting savings goal:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -812,7 +1008,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         loadBudgets(),
         loadAccounts(),
         loadCategories(),
-        // TODO: Add other data loading functions when implemented
+        loadInvestments(),
+        loadRecurringTransactions(),
+        loadAssets(),
+        loadSavingsGoals(),
       ]);
       console.log('Data refreshed from MariaDB');
     } catch (error) {

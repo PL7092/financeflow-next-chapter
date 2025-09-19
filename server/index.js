@@ -455,6 +455,276 @@ app.delete('/api/budgets/:id', async (req, res) => {
   }
 });
 
+// ========== INVESTMENTS CRUD ==========
+app.get('/api/investments', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const investments = await db.executeQuery(`
+      SELECT i.*, a.name as account_name
+      FROM investments i
+      LEFT JOIN accounts a ON i.account_id = a.id
+      WHERE i.user_id = ?
+      ORDER BY i.created_at DESC
+    `, [1]);
+    res.json({ success: true, data: investments });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/investments', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { name, symbol, type, quantity, purchase_price, current_price, purchase_date, account_id } = req.body;
+    const result = await db.executeQuery(
+      'INSERT INTO investments (name, symbol, type, quantity, purchase_price, current_price, purchase_date, account_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, symbol, type, quantity || 0, purchase_price || 0, current_price || purchase_price || 0, purchase_date, account_id, 1]
+    );
+    const investment = await db.executeQuery(`
+      SELECT i.*, a.name as account_name
+      FROM investments i
+      LEFT JOIN accounts a ON i.account_id = a.id
+      WHERE i.id = ?
+    `, [result.insertId]);
+    res.json({ success: true, data: investment[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/investments/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    const { name, symbol, type, quantity, purchase_price, current_price, purchase_date, account_id } = req.body;
+    await db.executeQuery(
+      'UPDATE investments SET name = ?, symbol = ?, type = ?, quantity = ?, purchase_price = ?, current_price = ?, purchase_date = ?, account_id = ? WHERE id = ? AND user_id = ?',
+      [name, symbol, type, quantity, purchase_price, current_price, purchase_date, account_id, id, 1]
+    );
+    const investment = await db.executeQuery(`
+      SELECT i.*, a.name as account_name
+      FROM investments i
+      LEFT JOIN accounts a ON i.account_id = a.id
+      WHERE i.id = ?
+    `, [id]);
+    res.json({ success: true, data: investment[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/investments/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    await db.executeQuery('DELETE FROM investments WHERE id = ? AND user_id = ?', [id, 1]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== RECURRING TRANSACTIONS CRUD ==========
+app.get('/api/recurring-transactions', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const recurringTransactions = await db.executeQuery(`
+      SELECT rt.*, c.name as category_name, c.color as category_color, 
+             a.name as account_name
+      FROM recurring_transactions rt
+      LEFT JOIN categories c ON rt.category_id = c.id
+      LEFT JOIN accounts a ON rt.account_id = a.id
+      WHERE rt.user_id = ?
+      ORDER BY rt.created_at DESC
+    `, [1]);
+    res.json({ success: true, data: recurringTransactions });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/recurring-transactions', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { amount, description, type, frequency, category_id, account_id, start_date, end_date, next_occurrence } = req.body;
+    const result = await db.executeQuery(
+      'INSERT INTO recurring_transactions (amount, description, type, frequency, category_id, account_id, start_date, end_date, next_occurrence, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [amount, description, type, frequency, category_id, account_id, start_date, end_date, next_occurrence || start_date, 1]
+    );
+    const recurringTransaction = await db.executeQuery(`
+      SELECT rt.*, c.name as category_name, c.color as category_color, 
+             a.name as account_name
+      FROM recurring_transactions rt
+      LEFT JOIN categories c ON rt.category_id = c.id
+      LEFT JOIN accounts a ON rt.account_id = a.id
+      WHERE rt.id = ?
+    `, [result.insertId]);
+    res.json({ success: true, data: recurringTransaction[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/recurring-transactions/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    const { amount, description, type, frequency, category_id, account_id, start_date, end_date, next_occurrence, is_active } = req.body;
+    await db.executeQuery(
+      'UPDATE recurring_transactions SET amount = ?, description = ?, type = ?, frequency = ?, category_id = ?, account_id = ?, start_date = ?, end_date = ?, next_occurrence = ?, is_active = ? WHERE id = ? AND user_id = ?',
+      [amount, description, type, frequency, category_id, account_id, start_date, end_date, next_occurrence, is_active, id, 1]
+    );
+    const recurringTransaction = await db.executeQuery(`
+      SELECT rt.*, c.name as category_name, c.color as category_color, 
+             a.name as account_name
+      FROM recurring_transactions rt
+      LEFT JOIN categories c ON rt.category_id = c.id
+      LEFT JOIN accounts a ON rt.account_id = a.id
+      WHERE rt.id = ?
+    `, [id]);
+    res.json({ success: true, data: recurringTransaction[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/recurring-transactions/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    await db.executeQuery('DELETE FROM recurring_transactions WHERE id = ? AND user_id = ?', [id, 1]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== ASSETS CRUD ==========
+app.get('/api/assets', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const assets = await db.executeQuery(`
+      SELECT * FROM assets
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `, [1]);
+    res.json({ success: true, data: assets });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/assets', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { name, type, purchase_price, current_value, purchase_date, description, depreciation_rate } = req.body;
+    const result = await db.executeQuery(
+      'INSERT INTO assets (name, type, purchase_price, current_value, purchase_date, description, depreciation_rate, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, type, purchase_price, current_value || purchase_price, purchase_date, description, depreciation_rate || 0, 1]
+    );
+    const asset = await db.executeQuery('SELECT * FROM assets WHERE id = ?', [result.insertId]);
+    res.json({ success: true, data: asset[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/assets/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    const { name, type, purchase_price, current_value, purchase_date, description, depreciation_rate } = req.body;
+    await db.executeQuery(
+      'UPDATE assets SET name = ?, type = ?, purchase_price = ?, current_value = ?, purchase_date = ?, description = ?, depreciation_rate = ? WHERE id = ? AND user_id = ?',
+      [name, type, purchase_price, current_value, purchase_date, description, depreciation_rate, id, 1]
+    );
+    const asset = await db.executeQuery('SELECT * FROM assets WHERE id = ?', [id]);
+    res.json({ success: true, data: asset[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/assets/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    await db.executeQuery('DELETE FROM assets WHERE id = ? AND user_id = ?', [id, 1]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== SAVINGS GOALS CRUD ==========
+app.get('/api/savings-goals', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const savingsGoals = await db.executeQuery(`
+      SELECT sg.*, a.name as account_name
+      FROM savings_goals sg
+      LEFT JOIN accounts a ON sg.account_id = a.id
+      WHERE sg.user_id = ?
+      ORDER BY sg.created_at DESC
+    `, [1]);
+    res.json({ success: true, data: savingsGoals });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/savings-goals', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { name, target_amount, current_amount, target_date, description, priority, account_id } = req.body;
+    const result = await db.executeQuery(
+      'INSERT INTO savings_goals (name, target_amount, current_amount, target_date, description, priority, account_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, target_amount, current_amount || 0, target_date, description, priority || 'medium', account_id, 1]
+    );
+    const savingsGoal = await db.executeQuery(`
+      SELECT sg.*, a.name as account_name
+      FROM savings_goals sg
+      LEFT JOIN accounts a ON sg.account_id = a.id
+      WHERE sg.id = ?
+    `, [result.insertId]);
+    res.json({ success: true, data: savingsGoal[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/savings-goals/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    const { name, target_amount, current_amount, target_date, description, priority, account_id, is_completed } = req.body;
+    await db.executeQuery(
+      'UPDATE savings_goals SET name = ?, target_amount = ?, current_amount = ?, target_date = ?, description = ?, priority = ?, account_id = ?, is_completed = ? WHERE id = ? AND user_id = ?',
+      [name, target_amount, current_amount, target_date, description, priority, account_id, is_completed, id, 1]
+    );
+    const savingsGoal = await db.executeQuery(`
+      SELECT sg.*, a.name as account_name
+      FROM savings_goals sg
+      LEFT JOIN accounts a ON sg.account_id = a.id
+      WHERE sg.id = ?
+    `, [id]);
+    res.json({ success: true, data: savingsGoal[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/savings-goals/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    await db.executeQuery('DELETE FROM savings_goals WHERE id = ? AND user_id = ?', [id, 1]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Serve React app for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../dist/index.html'));

@@ -5,9 +5,11 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { PlusCircle, Repeat, Calendar, AlertTriangle } from 'lucide-react';
 import { toast } from '../ui/use-toast';
+import { RecurringForm } from './RecurringForm';
 
 export const RecurringManager: React.FC = () => {
-  const { recurringTransactions, deleteRecurringTransaction } = useFinance();
+  const { addRecurringTransaction, recurringTransactions, deleteRecurringTransaction } = useFinance();
+  const [showForm, setShowForm] = useState(false);
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta transação recorrente?')) {
@@ -34,7 +36,7 @@ export const RecurringManager: React.FC = () => {
           <h1 className="text-2xl font-bold">Transações Recorrentes</h1>
           <p className="text-muted-foreground">Gerencie transações que se repetem automaticamente</p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" onClick={() => setShowForm(true)}>
           <PlusCircle size={16} />
           Nova Recorrente
         </Button>
@@ -90,6 +92,8 @@ export const RecurringManager: React.FC = () => {
           </div>
         )}
       </Card>
+      
+      <RecurringForm open={showForm} onOpenChange={setShowForm} />
     </div>
   );
 };
