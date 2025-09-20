@@ -234,20 +234,35 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     const baseClean = base.replace(/\/$/, '');
     const url = baseClean ? `${baseClean}/api${endpoint}` : `/api${endpoint}`;
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API call failed: ${response.statusText}`);
+    console.log('Making API call to:', url);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...options.headers,
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('API response not ok:', response.status, response.statusText);
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Expected JSON but got:', contentType, 'Response:', text.substring(0, 200));
+        throw new Error('Expected JSON response but got HTML - backend may not be running');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('API call error for', url, ':', error);
+      throw error;
     }
-    
-    return response.json();
   };
 
   // Load data functions
@@ -1045,6 +1060,12 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
 
   const refreshData = async () => {
     setIsLoading(true);
+    
+    const base = (localStorage.getItem('api_base_url') || '').trim();
+    if (!base) {
+      console.warn('⚠️ Backend not configured! Set localStorage.api_base_url to your server URL (e.g., http://unraid:3000)');
+    }
+    
     try {
       // Load all data from MariaDB
       await Promise.all([
@@ -1057,9 +1078,12 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         loadAssets(),
         loadSavingsGoals(),
       ]);
-      console.log('Data refreshed from MariaDB');
+      console.log('✅ Data refreshed from MariaDB successfully');
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      console.error('❌ Error refreshing data from backend:', error);
+      if (!base) {
+        console.error('💡 TIP: Configure backend URL with: localStorage.setItem("api_base_url", "http://YOUR_SERVER:PORT")');
+      }
     } finally {
       setIsLoading(false);
     }

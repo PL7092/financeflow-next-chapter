@@ -3,6 +3,7 @@ import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { BudgetOverview } from "@/components/dashboard/BudgetOverview";
 import { InvestmentSummary } from "@/components/dashboard/InvestmentSummary";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { BackendStatus } from "@/components/debug/BackendStatus";
 import { Button } from "@/components/ui/button";
 import { 
   Wallet, 
@@ -54,6 +55,9 @@ const Index = () => {
           </Button>
         </div>
       </div>
+
+      {/* Backend Connection Status */}
+      <BackendStatus />
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
