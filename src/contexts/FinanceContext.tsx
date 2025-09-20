@@ -309,6 +309,50 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
+  const loadInvestments = async () => {
+    try {
+      const response = await apiCall('/investments');
+      if (response.success) {
+        setInvestments(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading investments:', error);
+    }
+  };
+
+  const loadRecurringTransactions = async () => {
+    try {
+      const response = await apiCall('/recurring');
+      if (response.success) {
+        setRecurringTransactions(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading recurring transactions:', error);
+    }
+  };
+
+  const loadAssets = async () => {
+    try {
+      const response = await apiCall('/assets');
+      if (response.success) {
+        setAssets(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading assets:', error);
+    }
+  };
+
+  const loadSavingsGoals = async () => {
+    try {
+      const response = await apiCall('/savings-goals');
+      if (response.success) {
+        setSavingsGoals(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading savings goals:', error);
+    }
+  };
+
   // Load all data from MariaDB on component mount
   useEffect(() => {
     refreshData();
