@@ -337,7 +337,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
 
   const loadRecurringTransactions = async () => {
     try {
-      const response = await apiCall('/recurring');
+      const response = await apiCall('/recurring-transactions');
       if (response.success) {
         setRecurringTransactions(response.data);
       }
@@ -765,9 +765,19 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const addInvestment = async (investment: Omit<Investment, 'id'>) => {
     try {
       setIsLoading(true);
+      const payload = {
+        name: investment.name,
+        symbol: investment.symbol,
+        type: investment.type,
+        quantity: investment.quantity,
+        purchase_price: investment.purchasePrice,
+        current_price: investment.currentPrice ?? investment.purchasePrice,
+        purchase_date: (investment as any).purchaseDate || (investment as any).purchase_date,
+        account_id: (investment as any).accountId ?? (investment as any).account_id ?? null,
+      };
       const response = await apiCall('/investments', {
         method: 'POST',
-        body: JSON.stringify(investment),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
@@ -785,9 +795,18 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const updateInvestment = async (id: string, investment: Partial<Investment>) => {
     try {
       setIsLoading(true);
+      const payload: any = {};
+      if (investment.name !== undefined) payload.name = investment.name;
+      if (investment.symbol !== undefined) payload.symbol = investment.symbol;
+      if (investment.type !== undefined) payload.type = investment.type as any;
+      if (investment.quantity !== undefined) payload.quantity = investment.quantity as any;
+      if ((investment as any).purchasePrice !== undefined) payload.purchase_price = (investment as any).purchasePrice;
+      if ((investment as any).currentPrice !== undefined) payload.current_price = (investment as any).currentPrice;
+      if ((investment as any).purchaseDate !== undefined) payload.purchase_date = (investment as any).purchaseDate;
+      if ((investment as any).accountId !== undefined) payload.account_id = (investment as any).accountId;
       const response = await apiCall(`/investments/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(investment),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
@@ -823,9 +842,20 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const addRecurringTransaction = async (transaction: Omit<RecurringTransaction, 'id'>) => {
     try {
       setIsLoading(true);
+      const payload = {
+        amount: transaction.amount,
+        description: transaction.description,
+        type: transaction.type,
+        frequency: transaction.frequency,
+        category_id: transaction.categoryId ?? null,
+        account_id: transaction.accountId,
+        start_date: transaction.startDate,
+        end_date: (transaction as any).endDate ?? null,
+        next_occurrence: (transaction as any).nextOccurrence ?? transaction.startDate,
+      };
       const response = await apiCall('/recurring-transactions', {
         method: 'POST',
-        body: JSON.stringify(transaction),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
@@ -843,9 +873,20 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const updateRecurringTransaction = async (id: string, transaction: Partial<RecurringTransaction>) => {
     try {
       setIsLoading(true);
+      const payload: any = {};
+      if (transaction.amount !== undefined) payload.amount = transaction.amount;
+      if (transaction.description !== undefined) payload.description = transaction.description;
+      if (transaction.type !== undefined) payload.type = transaction.type;
+      if (transaction.frequency !== undefined) payload.frequency = transaction.frequency;
+      if ((transaction as any).categoryId !== undefined) payload.category_id = (transaction as any).categoryId;
+      if ((transaction as any).accountId !== undefined) payload.account_id = (transaction as any).accountId;
+      if ((transaction as any).startDate !== undefined) payload.start_date = (transaction as any).startDate;
+      if ((transaction as any).endDate !== undefined) payload.end_date = (transaction as any).endDate;
+      if ((transaction as any).nextOccurrence !== undefined) payload.next_occurrence = (transaction as any).nextOccurrence;
+      if ((transaction as any).isActive !== undefined) payload.is_active = (transaction as any).isActive;
       const response = await apiCall(`/recurring-transactions/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(transaction),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
@@ -881,9 +922,18 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const addAsset = async (asset: Omit<Asset, 'id' | 'created_at'>) => {
     try {
       setIsLoading(true);
+      const payload = {
+        name: asset.name,
+        type: asset.type,
+        purchase_price: asset.purchasePrice,
+        current_value: asset.currentValue ?? asset.purchasePrice,
+        purchase_date: asset.purchaseDate,
+        description: asset.description,
+        depreciation_rate: asset.depreciationRate ?? 0,
+      };
       const response = await apiCall('/assets', {
         method: 'POST',
-        body: JSON.stringify(asset),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
@@ -901,9 +951,17 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const updateAsset = async (id: string, asset: Partial<Asset>) => {
     try {
       setIsLoading(true);
+      const payload: any = {};
+      if (asset.name !== undefined) payload.name = asset.name;
+      if (asset.type !== undefined) payload.type = asset.type as any;
+      if ((asset as any).purchasePrice !== undefined) payload.purchase_price = (asset as any).purchasePrice;
+      if ((asset as any).currentValue !== undefined) payload.current_value = (asset as any).currentValue;
+      if ((asset as any).purchaseDate !== undefined) payload.purchase_date = (asset as any).purchaseDate;
+      if (asset.description !== undefined) payload.description = asset.description as any;
+      if ((asset as any).depreciationRate !== undefined) payload.depreciation_rate = (asset as any).depreciationRate;
       const response = await apiCall(`/assets/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(asset),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
@@ -939,9 +997,18 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id' | 'created_at'>) => {
     try {
       setIsLoading(true);
+      const payload = {
+        name: goal.name,
+        target_amount: goal.targetAmount,
+        current_amount: goal.currentAmount ?? 0,
+        target_date: goal.targetDate,
+        description: goal.description,
+        priority: goal.priority,
+        account_id: goal.accountId ?? null,
+      };
       const response = await apiCall('/savings-goals', {
         method: 'POST',
-        body: JSON.stringify(goal),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
@@ -959,9 +1026,18 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
   const updateSavingsGoal = async (id: string, goal: Partial<SavingsGoal>) => {
     try {
       setIsLoading(true);
+      const payload: any = {};
+      if (goal.name !== undefined) payload.name = goal.name;
+      if ((goal as any).targetAmount !== undefined) payload.target_amount = (goal as any).targetAmount;
+      if ((goal as any).currentAmount !== undefined) payload.current_amount = (goal as any).currentAmount;
+      if ((goal as any).targetDate !== undefined) payload.target_date = (goal as any).targetDate;
+      if (goal.description !== undefined) payload.description = goal.description as any;
+      if (goal.priority !== undefined) payload.priority = goal.priority as any;
+      if ((goal as any).accountId !== undefined) payload.account_id = (goal as any).accountId;
+      if ((goal as any).isCompleted !== undefined) payload.is_completed = (goal as any).isCompleted;
       const response = await apiCall(`/savings-goals/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(goal),
+        body: JSON.stringify(payload),
       });
       
       if (response.success) {
