@@ -27,7 +27,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     amount: '',
     description: '',
     category: '',
-    entity: 'none',
+    entity: '',
     account: '',
     toAccount: '',
     date: new Date().toISOString().split('T')[0],
@@ -44,7 +44,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         amount: transaction.amount.toString(),
         description: transaction.description,
         category: transaction.categoryId || '',
-        entity: transaction.entity || 'none',
+        entity: transaction.entity || '',
         account: transaction.accountId || '',
         toAccount: '',
         date: transaction.date,
@@ -92,6 +92,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (formData.type !== 'transfer' && !formData.category) {
       newErrors.category = 'Categoria é obrigatória';
     }
+    if (!formData.entity || formData.entity === 'none') {
+      newErrors.entity = 'Entidade é obrigatória';
+    }
     if (formData.type === 'transfer' && !formData.toAccount) {
       newErrors.toAccount = 'Conta de destino é obrigatória';
     }
@@ -113,7 +116,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       amount: parseFloat(formData.amount),
       description: formData.description,
       categoryId: formData.type === 'transfer' ? undefined : (formData.category || undefined),
-      entity: formData.entity === 'none' ? undefined : formData.entity,
+      entity: formData.entity,
       accountId: formData.account,
       date: formData.date,
       tags: formData.tags,
@@ -224,16 +227,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
             {/* Entidade */}
             <div className="space-y-2">
-              <Label>Entidade (Opcional)</Label>
+              <Label>Entidade</Label>
               <Select
                 value={formData.entity}
                 onValueChange={(value) => handleInputChange('entity', value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className={errors.entity ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Selecione uma entidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
                   {entities.map((entity) => (
                     <SelectItem key={entity.id} value={entity.name}>
                       {entity.name} ({entity.type})
@@ -241,6 +243,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+              {errors.entity && (
+                <p className="text-sm text-red-500">{errors.entity}</p>
+              )}
             </div>
 
             {/* Conta de Origem */}

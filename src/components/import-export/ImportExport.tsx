@@ -70,21 +70,33 @@ export const ImportExport: React.FC = () => {
           continue;
         }
 
+        // Validate required fields for entity and category
+        if (!row.entity && !row.Entity) {
+          errors.push(`Linha ${importedCount + 1}: Entidade é obrigatória`);
+          continue;
+        }
+
+        if (!row.categoryId && !row.CategoryId && !row.category && !row.Category) {
+          errors.push(`Linha ${importedCount + 1}: Categoria é obrigatória`);
+          continue;
+        }
+
         const transaction = {
           type: (row.type || row.Type || 'expense') as 'income' | 'expense' | 'transfer',
           amount: parseFloat(row.amount || row.Amount || '0'),
           description: row.description || row.Description || 'Importado',
           categoryId: row.categoryId || row.CategoryId || undefined,
+          entity: row.entity || row.Entity,
           accountId: row.accountId || row.AccountId || defaultAccount.id,
           date: row.date || row.Date || new Date().toISOString().split('T')[0],
           tags: row.tags ? row.tags.split(',').map((tag: string) => tag.trim()) : [],
         };
 
-        if (transaction.amount > 0 && transaction.description) {
+        if (transaction.amount > 0 && transaction.description && transaction.entity && transaction.categoryId) {
           await addTransaction(transaction);
           importedCount++;
         } else {
-          errors.push(`Linha inválida: ${JSON.stringify(row)}`);
+          errors.push(`Linha ${importedCount + 1}: Dados obrigatórios em falta - ${JSON.stringify(row)}`);
         }
       } catch (error) {
         errors.push(`Erro ao processar linha: ${error}`);
@@ -272,9 +284,9 @@ export const ImportExport: React.FC = () => {
 
   const exportTransactions = () => {
     const csvContent = [
-      'Type,Amount,Description,CategoryId,AccountId,Date,Tags',
+      'Type,Amount,Description,CategoryId,Entity,AccountId,Date,Tags',
       ...transactions.map(transaction => 
-        `${transaction.type},${transaction.amount},"${transaction.description}",${transaction.categoryId},${transaction.accountId},${transaction.date},"${transaction.tags?.join(', ') || ''}"`
+        `${transaction.type},${transaction.amount},"${transaction.description}",${transaction.categoryId},"${transaction.entity || ''}",${transaction.accountId},${transaction.date},"${transaction.tags?.join(', ') || ''}"`
       )
     ].join('\n');
     
@@ -399,6 +411,11 @@ export const ImportExport: React.FC = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="paste-data">Ou cole os dados aqui</Label>
+                <div className="mb-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-700">
+                    <strong>Campos obrigatórios:</strong> Entity (entidade) e CategoryId (categoria) são obrigatórios para todas as transações.
+                  </p>
+                </div>
                 <textarea
                   id="paste-data"
                   className="w-full min-h-32 px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md resize-none"

@@ -27,6 +27,9 @@ export const TransactionImportWizard: React.FC<TransactionImportWizardProps> = (
               <p className="text-sm text-yellow-700">
                 ⚠️ Para usar o Smart Import, configure primeiro suas chaves de API da IA nas configurações.
               </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                <strong>Importante:</strong> Entidade e categoria são obrigatórias para todas as transações.
+              </p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
