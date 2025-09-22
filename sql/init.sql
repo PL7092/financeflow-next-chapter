@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Seed default demo user to satisfy FK (id=1)
+INSERT IGNORE INTO users (id, email, name, password_hash) VALUES (1, 'demo@local', 'Demo User', 'demo');
 -- Categories table
 CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,

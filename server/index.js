@@ -16,8 +16,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// Health check endpoint with real database status
-app.get('/health', async (req, res) => {
+// Health check endpoint with real database status (supports /health and /api/health)
+app.get(['/health', '/api/health'], async (req, res) => {
   let dbStatus = 'disconnected';
   let dbError = null;
   
@@ -755,6 +755,17 @@ app.listen(PORT, '0.0.0.0', async () => {
       useSSL: process.env.DB_SSL === 'true'
     });
     console.log('✅ Database connection pool initialized');
+
+    // Ensure default user (id=1) exists to satisfy FK references
+    try {
+      await db.executeQuery(
+        'INSERT IGNORE INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)',
+        [1, 'demo@local', 'Demo User', 'demo']
+      );
+      console.log('✅ Default demo user ensured (id=1)');
+    } catch (seedErr) {
+      console.warn('⚠️ Could not ensure default user:', seedErr.message);
+    }
   } catch (error) {
     console.error('❌ Failed to initialize database connection:', error.message);
   }
