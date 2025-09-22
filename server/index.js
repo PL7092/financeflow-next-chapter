@@ -63,7 +63,7 @@ app.post('/api/db/init', async (req, res) => {
     // Prefer client-provided config; fallback to environment
     const bodyConfig = req.body || {};
     const config = bodyConfig.host ? bodyConfig : {
-      host: process.env.DB_HOST,
+      host: process.env.DB_HOST === 'mariadb' ? 'localhost' : process.env.DB_HOST,
       port: process.env.DB_PORT,
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
@@ -77,6 +77,7 @@ app.post('/api/db/init', async (req, res) => {
     const result = await db.initializeSchema();
     res.json(result);
   } catch (error) {
+    console.error('❌ Failed to initialize schema:', error.message);
     res.status(500).json({
       success: false,
       message: 'Erro ao inicializar schema',
@@ -89,7 +90,7 @@ app.get('/api/db/stats', async (req, res) => {
   try {
     if (!db.pool) {
       await db.createConnection({
-        host: process.env.DB_HOST,
+        host: process.env.DB_HOST === 'mariadb' ? 'localhost' : process.env.DB_HOST,
         port: process.env.DB_PORT,
         username: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
@@ -104,6 +105,7 @@ app.get('/api/db/stats', async (req, res) => {
       data: stats
     });
   } catch (error) {
+    console.error('❌ Failed to get database stats:', error.message);
     res.status(500).json({
       success: false,
       message: 'Erro ao obter estatísticas',
@@ -120,7 +122,7 @@ app.post('/api/db/stats', async (req, res) => {
       await db.createConnection(bodyConfig);
     } else if (!db.pool) {
       await db.createConnection({
-        host: process.env.DB_HOST,
+        host: process.env.DB_HOST === 'mariadb' ? 'localhost' : process.env.DB_HOST,
         port: process.env.DB_PORT,
         username: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
@@ -132,6 +134,7 @@ app.post('/api/db/stats', async (req, res) => {
     const stats = await db.getTableStats();
     res.json({ success: true, data: stats });
   } catch (error) {
+    console.error('❌ Failed to get database stats via POST:', error.message);
     res.status(500).json({ success: false, message: 'Erro ao obter estatísticas', error: error.message });
   }
 });
@@ -747,7 +750,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   // Initialize database connection on startup
   try {
     await db.createConnection({
-      host: process.env.DB_HOST,
+      host: process.env.DB_HOST === 'mariadb' ? 'localhost' : process.env.DB_HOST,
       port: process.env.DB_PORT,
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,

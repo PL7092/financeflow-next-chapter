@@ -21,7 +21,8 @@ class DatabaseService {
     };
 
     const connectionConfig = {
-      host: (config.host && String(config.host).trim()) || (process.env.DB_HOST || 'mariadb'),
+      host: (config.host && String(config.host).trim()) || 
+            (process.env.DB_HOST === 'mariadb' ? 'localhost' : process.env.DB_HOST || 'localhost'),
       port: normalizePort(config.port || process.env.DB_PORT || 3306),
       user: (config.username && String(config.username).trim()) || (process.env.DB_USER || 'finance_user'),
       password: (config.password && String(config.password).trim()) || (process.env.DB_PASSWORD || 'finance_user_password_2024'),
