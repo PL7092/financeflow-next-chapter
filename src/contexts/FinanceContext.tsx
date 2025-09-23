@@ -324,68 +324,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     }
   };
 
-  const loadInvestments = async () => {
-    try {
-      const response = await apiCall('/investments');
-      if (response.success) {
-        setInvestments(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading investments:', error);
-    }
-  };
-
-  const loadRecurringTransactions = async () => {
-    try {
-      const response = await apiCall('/recurring-transactions');
-      if (response.success) {
-        setRecurringTransactions(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading recurring transactions:', error);
-    }
-  };
-
-  const loadAssets = async () => {
-    try {
-      const response = await apiCall('/assets');
-      if (response.success) {
-        setAssets(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading assets:', error);
-    }
-  };
-
-  const loadSavingsGoals = async () => {
-    try {
-      const response = await apiCall('/savings-goals');
-      if (response.success) {
-        setSavingsGoals(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading savings goals:', error);
-    }
-  };
-
   // Load all data from MariaDB on component mount
   useEffect(() => {
     refreshData();
   }, []);
-
-  // Add Transaction - Now uses MariaDB
-  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
-    try {
-      setIsLoading(true);
-      const payload = {
-        amount: transaction.amount,
-        description: transaction.description,
-        type: transaction.type,
-        category_id: transaction.categoryId ?? null,
-        account_id: transaction.accountId,
-        date: transaction.date,
-  };
-
   const loadInvestments = async () => {
     try {
       const response = await apiCall('/investments');
@@ -479,6 +421,31 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
       console.error('Error loading savings goals:', error);
     }
   };
+
+  const loadEntities = async () => {
+    try {
+      const response = await apiCall('/entities');
+      if (response.success) {
+        setEntities(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading entities:', error);
+    }
+  };
+
+  // Add Transaction - Now uses MariaDB
+  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    try {
+      setIsLoading(true);
+      const payload = {
+        amount: transaction.amount,
+        description: transaction.description,
+        type: transaction.type,
+        category_id: transaction.categoryId ?? null,
+        account_id: transaction.accountId,
+        date: transaction.date,
+      };
+
       const response = await apiCall('/transactions', {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -1153,6 +1120,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         loadRecurringTransactions(),
         loadAssets(),
         loadSavingsGoals(),
+        loadEntities(),
       ]);
       console.log('✅ Data refreshed from MariaDB successfully');
     } catch (error) {

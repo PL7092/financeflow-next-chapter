@@ -84,6 +84,15 @@ export const SettingsManager: React.FC = () => {
     maxConnections: 10,
   });
 
+  // Backend Settings
+  const [backendSettings, setBackendSettings] = useState(() => {
+    const saved = localStorage.getItem('api_base_url') || '';
+    return {
+      apiBaseUrl: saved,
+      timeout: 30000,
+    };
+  });
+
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'failed'>('untested');
   const [isSaving, setIsSaving] = useState(false);
@@ -173,6 +182,69 @@ export const SettingsManager: React.FC = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleBackendSave = () => {
+    try {
+      // Save backend URL to localStorage
+      localStorage.setItem('api_base_url', backendSettings.apiBaseUrl);
+      
+      toast({
+        title: "Configurações guardadas",
+        description: "URL do backend foi guardada com sucesso!",
+      });
+      
+      console.log('Backend settings saved successfully');
+    } catch (error) {
+      console.error('Failed to save backend settings:', error);
+      toast({
+        title: "Erro ao guardar",
+        description: "Ocorreu um erro ao guardar as configurações. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const testBackendConnection = async () => {
+    setTestingConnection(true);
+    
+    try {
+      const baseUrl = backendSettings.apiBaseUrl.replace(/\/$/, '');
+      const url = baseUrl ? `${baseUrl}/api/health` : '/api/health';
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setConnectionStatus('success');
+        toast({
+          title: "Ligação bem-sucedida",
+          description: "Backend está disponível e a funcionar",
+        });
+      } else {
+        setConnectionStatus('failed');
+        toast({
+          title: "Falha na ligação",
+          description: `Erro ${response.status}: ${response.statusText}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Backend connection test failed:', error);
+      setConnectionStatus('failed');
+      toast({
+        title: "Erro ao testar ligação",
+        description: "Verifique se o backend está a funcionar e o URL está correto",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -338,6 +410,7 @@ export const SettingsManager: React.FC = () => {
     { id: 'notifications', label: 'Notificações', icon: Bell },
     { id: 'security', label: 'Segurança', icon: Shield },
     { id: 'ai', label: 'Inteligência Artificial', icon: Brain },
+    { id: 'backend', label: 'Backend', icon: TestTube },
     { id: 'database', label: 'Base de Dados', icon: Database },
     { id: 'data', label: 'Gestão de Dados', icon: FileText },
   ];
@@ -809,6 +882,71 @@ export const SettingsManager: React.FC = () => {
                   <Button onClick={handleAiSettingsSave} className="w-full md:w-auto">
                     <Save className="h-4 w-4 mr-2" />
                     Guardar Configurações de IA
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Backend Settings Tab */}
+            {activeTab === 'backend' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Configurações do Backend</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure a ligação ao servidor backend da aplicação
+                  </p>
+                </div>
+
+                <Alert>
+                  <TestTube className="h-4 w-4" />
+                  <AlertDescription>
+                    Em Docker, normalmente o backend está acessível no mesmo host. 
+                    Deixe em branco para usar o host atual, ou configure um URL específico.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="backend-url">URL do Backend</Label>
+                    <Input
+                      id="backend-url"
+                      value={backendSettings.apiBaseUrl}
+                      onChange={(e) => setBackendSettings(prev => ({ ...prev, apiBaseUrl: e.target.value }))}
+                      placeholder="http://localhost:3000 ou deixe em branco"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deixe em branco para usar URLs relativos (recomendado para Docker)
+                    </p>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button 
+                      onClick={testBackendConnection}
+                      disabled={testingConnection}
+                      variant="outline"
+                    >
+                      <TestTube className="h-4 w-4 mr-2" />
+                      {testingConnection ? 'A testar...' : 'Testar Ligação'}
+                    </Button>
+                    
+                    {connectionStatus === 'success' && (
+                      <div className="flex items-center text-green-600">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        <span className="text-sm">Ligação bem-sucedida</span>
+                      </div>
+                    )}
+                    
+                    {connectionStatus === 'failed' && (
+                      <div className="flex items-center text-red-600">
+                        <XCircle className="h-4 w-4 mr-1" />
+                        <span className="text-sm">Falha na ligação</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button onClick={handleBackendSave} className="w-full md:w-auto">
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar Configurações
                   </Button>
                 </div>
               </div>
