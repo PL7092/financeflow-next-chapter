@@ -56,6 +56,10 @@ export const getCurrentMonthRange = () => {
   };
 };
 
+export const formatDateForInput = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
+
 export const getDateRange = (months: number) => {
   const now = new Date();
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);

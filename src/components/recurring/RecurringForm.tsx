@@ -6,6 +6,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useFinance } from '../../contexts/FinanceContext';
 import { toast } from '../ui/use-toast';
+import { formatDateForInput } from '../../utils/dateUtils';
 
 interface RecurringFormProps {
   open: boolean;
@@ -22,7 +23,7 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({ open, onOpenChange
     frequency: 'monthly' as const,
     categoryId: '',
     accountId: '',
-    startDate: '',
+    startDate: formatDateForInput(new Date()),
     endDate: '',
     nextOccurrence: '',
   });
@@ -51,7 +52,7 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({ open, onOpenChange
         frequency: 'monthly',
         categoryId: '',
         accountId: '',
-        startDate: '',
+        startDate: formatDateForInput(new Date()),
         endDate: '',
         nextOccurrence: '',
       });

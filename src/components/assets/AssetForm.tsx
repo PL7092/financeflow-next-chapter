@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { toast } from '../ui/use-toast';
+import { formatDateForInput } from '../../utils/dateUtils';
 import type { Asset } from '../../contexts/FinanceContext';
 
 interface AssetFormProps {
@@ -34,7 +35,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ open, onOpenChange, asset 
     type: asset?.type || 'other',
     purchasePrice: asset?.purchasePrice?.toString() || '',
     currentValue: asset?.currentValue?.toString() || '',
-    purchaseDate: asset?.purchaseDate || new Date().toISOString().split('T')[0],
+    purchaseDate: asset?.purchaseDate || formatDateForInput(new Date()),
     description: asset?.description || '',
     depreciationRate: asset?.depreciationRate?.toString() || '0',
   });
@@ -47,7 +48,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ open, onOpenChange, asset 
         type: asset.type || 'other',
         purchasePrice: asset.purchasePrice?.toString() || '',
         currentValue: asset.currentValue?.toString() || '',
-        purchaseDate: asset.purchaseDate || new Date().toISOString().split('T')[0],
+        purchaseDate: asset.purchaseDate || formatDateForInput(new Date()),
         description: asset.description || '',
         depreciationRate: asset.depreciationRate?.toString() || '0',
       });
@@ -57,7 +58,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ open, onOpenChange, asset 
         type: 'other',
         purchasePrice: '',
         currentValue: '',
-        purchaseDate: new Date().toISOString().split('T')[0],
+        purchaseDate: formatDateForInput(new Date()),
         description: '',
         depreciationRate: '0',
       });

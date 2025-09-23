@@ -6,6 +6,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useFinance } from '../../contexts/FinanceContext';
 import { toast } from '../ui/use-toast';
+import { formatDateForInput } from '../../utils/dateUtils';
 
 interface InvestmentFormProps {
   open: boolean;
@@ -22,7 +23,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ open, onOpenChan
     quantity: 0,
     purchasePrice: 0,
     currentPrice: 0,
-    purchaseDate: '',
+    purchaseDate: formatDateForInput(new Date()),
     accountId: '',
   });
 
@@ -53,7 +54,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ open, onOpenChan
         quantity: 0,
         purchasePrice: 0,
         currentPrice: 0,
-        purchaseDate: '',
+        purchaseDate: formatDateForInput(new Date()),
         accountId: '',
       });
     } catch (error) {

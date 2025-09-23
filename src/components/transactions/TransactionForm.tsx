@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { X, Plus, Tag } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
+import { formatDateForInput } from '../../utils/dateUtils';
 import type { Transaction } from '../../contexts/FinanceContext';
 
 interface TransactionFormProps {
@@ -30,7 +31,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     entity: '',
     account: '',
     toAccount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: formatDateForInput(new Date()),
     tags: [] as string[],
   });
 
