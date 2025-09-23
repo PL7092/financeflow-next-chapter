@@ -20,7 +20,7 @@ export function BudgetForm({ budget, onClose }: BudgetFormProps) {
   
   const [formData, setFormData] = useState({
     name: '',
-    categoryId: '',
+    categoryId: 'all',
     amount: '',
     period: 'monthly' as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
     startDate: '',
@@ -31,7 +31,7 @@ export function BudgetForm({ budget, onClose }: BudgetFormProps) {
     if (budget) {
       setFormData({
         name: budget.name,
-        categoryId: budget.categoryId || '',
+        categoryId: budget.categoryId || 'all',
         amount: budget.amount.toString(),
         period: budget.period,
         startDate: budget.startDate,
@@ -78,7 +78,7 @@ export function BudgetForm({ budget, onClose }: BudgetFormProps) {
     try {
       const budgetData = {
         name: formData.name,
-        categoryId: formData.categoryId || undefined,
+        categoryId: formData.categoryId === 'all' ? undefined : formData.categoryId,
         amount,
         spent: 0,
         period: formData.period,
@@ -144,8 +144,8 @@ export function BudgetForm({ budget, onClose }: BudgetFormProps) {
                 <SelectValue placeholder="Selecione uma categoria (opcional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as categorias</SelectItem>
-                {categories.filter(c => c.type === 'expense').map((category) => (
+                <SelectItem value="all">Todas as categorias</SelectItem>
+                {categories.filter(c => c.type === 'expense' && c.id && c.id.trim()).map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>

@@ -135,7 +135,7 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({ open, onOpenChange
                 <SelectValue placeholder="Selecionar categoria" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((category) => (
+                {categories.filter(category => category.id && category.id.trim()).map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
@@ -151,7 +151,7 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({ open, onOpenChange
                 <SelectValue placeholder="Selecionar conta" />
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((account) => (
+                {accounts.filter(account => account.id && account.id.trim()).map((account) => (
                   <SelectItem key={account.id} value={account.id}>
                     {account.name}
                   </SelectItem>

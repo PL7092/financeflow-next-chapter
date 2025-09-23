@@ -167,7 +167,7 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ open, onOpenChan
                 <SelectValue placeholder="Selecionar conta" />
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((account) => (
+                {accounts.filter(account => account.id && account.id.trim()).map((account) => (
                   <SelectItem key={account.id} value={account.id}>
                     {account.name}
                   </SelectItem>
