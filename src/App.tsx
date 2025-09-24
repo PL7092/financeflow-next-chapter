@@ -10,6 +10,7 @@ import { ChatBot } from "@/components/chatbot/ChatBot";
 import { ChatBotToggle } from "@/components/chatbot/ChatBotToggle";
 import { FinanceProvider } from "./contexts/FinanceContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SettingsProvider } from "./contexts/SettingsContext";
 import Index from "./pages/Index";
 import Data from "./pages/Data";
 import Transactions from "./pages/Transactions";
@@ -69,13 +70,15 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
+      <SettingsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </TooltipProvider>
+      </SettingsProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

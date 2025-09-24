@@ -262,6 +262,42 @@ FROM budgets b
 LEFT JOIN categories c ON b.category_id = c.id
 WHERE b.is_active = TRUE;
 
+-- User Settings table
+CREATE TABLE IF NOT EXISTS user_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL DEFAULT 1,
+    category ENUM('app', 'notifications', 'security') NOT NULL,
+    settings JSON NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_category (user_id, category),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Insert default settings for user 1
+INSERT IGNORE INTO user_settings (user_id, category, settings) VALUES
+(1, 'app', JSON_OBJECT(
+    'currency', 'EUR',
+    'dateFormat', 'DD/MM/YYYY',
+    'theme', 'system',
+    'language', 'pt'
+)),
+(1, 'notifications', JSON_OBJECT(
+    'budgetAlerts', true,
+    'transactionNotifications', false,
+    'monthlyReports', true,
+    'investmentAlerts', true,
+    'goalReminders', true,
+    'emailNotifications', true,
+    'pushNotifications', false
+)),
+(1, 'security', JSON_OBJECT(
+    'twoFactorAuth', false,
+    'sessionTimeout', 30,
+    'loginAlerts', true,
+    'dataEncryption', true
+));
+
 -- Create indexes for better performance
 CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
 CREATE INDEX idx_budgets_user_active ON budgets(user_id, is_active);

@@ -10,9 +10,18 @@ import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
 import { useToast } from '../ui/use-toast';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export const SettingsManager: React.FC = () => {
   const { toast } = useToast();
+  const { 
+    settings, 
+    isLoading: settingsLoading, 
+    updateAppSettings, 
+    updateNotificationSettings, 
+    updateSecuritySettings 
+  } = useSettings();
+  
   const [activeTab, setActiveTab] = useState('profile');
 
   // Load database stats on component mount
@@ -22,7 +31,7 @@ export const SettingsManager: React.FC = () => {
     }
   }, [activeTab]);
 
-  // Profile Settings
+  // Profile Settings (unchanged)
   const [profileData, setProfileData] = useState({
     name: 'Utilizador Demo',
     email: 'user@example.com',
@@ -31,34 +40,7 @@ export const SettingsManager: React.FC = () => {
     confirmPassword: '',
   });
 
-  // App Settings
-  const [appSettings, setAppSettings] = useState({
-    currency: 'EUR',
-    dateFormat: 'DD/MM/YYYY',
-    theme: 'system',
-    language: 'pt',
-  });
-
-  // Notification Settings
-  const [notifications, setNotifications] = useState({
-    budgetAlerts: true,
-    transactionNotifications: false,
-    monthlyReports: true,
-    investmentAlerts: true,
-    goalReminders: true,
-    emailNotifications: true,
-    pushNotifications: false,
-  });
-
-  // Security Settings
-  const [security, setSecurity] = useState({
-    twoFactorAuth: false,
-    sessionTimeout: 30,
-    loginAlerts: true,
-    dataEncryption: true,
-  });
-
-  // AI Settings
+  // AI Settings (unchanged)
   const [aiSettings, setAiSettings] = useState(() => {
     const saved = localStorage.getItem('aiSettings');
     return saved ? JSON.parse(saved) : {
@@ -72,7 +54,7 @@ export const SettingsManager: React.FC = () => {
     };
   });
 
-  // Database Settings
+  // Database Settings (unchanged)
   const [dbSettings, setDbSettings] = useState({
     host: 'mariadb',
     port: '3306',
@@ -84,7 +66,7 @@ export const SettingsManager: React.FC = () => {
     maxConnections: 10,
   });
 
-  // Backend Settings
+  // Backend Settings (unchanged)
   const [backendSettings, setBackendSettings] = useState(() => {
     const saved = localStorage.getItem('api_base_url') || '';
     return {
@@ -106,22 +88,19 @@ export const SettingsManager: React.FC = () => {
     // Example: await updateProfile(profileData);
   };
 
-  const handleAppSettingsSave = () => {
-    // Save app settings to localStorage and backend
-    localStorage.setItem('appSettings', JSON.stringify(appSettings));
-    console.log('Saving app settings:', appSettings);
+  // Use context methods for app settings
+  const handleAppSettingsSave = async () => {
+    await updateAppSettings(settings.appSettings);
   };
 
-  const handleNotificationsSave = () => {
-    // Save notification preferences
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-    console.log('Saving notifications:', notifications);
+  // Use context methods for notification settings
+  const handleNotificationsSave = async () => {
+    await updateNotificationSettings(settings.notificationSettings);
   };
 
-  const handleSecuritySave = () => {
-    // Save security settings
-    localStorage.setItem('security', JSON.stringify(security));
-    console.log('Saving security:', security);
+  // Use context methods for security settings
+  const handleSecuritySave = async () => {
+    await updateSecuritySettings(settings.securitySettings);
   };
 
   const handleAiSettingsSave = () => {
@@ -540,8 +519,8 @@ export const SettingsManager: React.FC = () => {
                     <div className="space-y-2">
                       <Label>Moeda Padrão</Label>
                       <Select 
-                        value={appSettings.currency} 
-                        onValueChange={(value) => setAppSettings(prev => ({ ...prev, currency: value }))}
+                        value={settings.appSettings.currency} 
+                        onValueChange={(value) => updateAppSettings({ currency: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -558,8 +537,8 @@ export const SettingsManager: React.FC = () => {
                     <div className="space-y-2">
                       <Label>Formato de Data</Label>
                       <Select 
-                        value={appSettings.dateFormat} 
-                        onValueChange={(value) => setAppSettings(prev => ({ ...prev, dateFormat: value }))}
+                        value={settings.appSettings.dateFormat} 
+                        onValueChange={(value) => updateAppSettings({ dateFormat: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -575,8 +554,8 @@ export const SettingsManager: React.FC = () => {
                     <div className="space-y-2">
                       <Label>Tema</Label>
                       <Select 
-                        value={appSettings.theme} 
-                        onValueChange={(value) => setAppSettings(prev => ({ ...prev, theme: value }))}
+                        value={settings.appSettings.theme} 
+                        onValueChange={(value) => updateAppSettings({ theme: value as 'light' | 'dark' | 'system' })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -592,8 +571,8 @@ export const SettingsManager: React.FC = () => {
                     <div className="space-y-2">
                       <Label>Idioma</Label>
                       <Select 
-                        value={appSettings.language} 
-                        onValueChange={(value) => setAppSettings(prev => ({ ...prev, language: value }))}
+                        value={settings.appSettings.language} 
+                        onValueChange={(value) => updateAppSettings({ language: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -608,9 +587,9 @@ export const SettingsManager: React.FC = () => {
                     </div>
                   </div>
 
-                  <Button onClick={handleAppSettingsSave} className="w-full md:w-auto">
+                  <Button onClick={handleAppSettingsSave} disabled={settingsLoading} className="w-full md:w-auto">
                     <Save className="h-4 w-4 mr-2" />
-                    Guardar Configurações
+                    {settingsLoading ? 'A guardar...' : 'Guardar Configurações'}
                   </Button>
                 </div>
               </div>
@@ -641,9 +620,9 @@ export const SettingsManager: React.FC = () => {
                           <p className="text-xs text-muted-foreground">{item.desc}</p>
                         </div>
                         <Switch
-                          checked={notifications[item.key as keyof typeof notifications] as boolean}
+                          checked={settings.notificationSettings[item.key as keyof typeof settings.notificationSettings] as boolean}
                           onCheckedChange={(checked) => 
-                            setNotifications(prev => ({ ...prev, [item.key]: checked }))
+                            updateNotificationSettings({ [item.key]: checked })
                           }
                         />
                       </div>
@@ -664,18 +643,18 @@ export const SettingsManager: React.FC = () => {
                           <p className="text-xs text-muted-foreground">{item.desc}</p>
                         </div>
                         <Switch
-                          checked={notifications[item.key as keyof typeof notifications] as boolean}
+                          checked={settings.notificationSettings[item.key as keyof typeof settings.notificationSettings] as boolean}
                           onCheckedChange={(checked) => 
-                            setNotifications(prev => ({ ...prev, [item.key]: checked }))
+                            updateNotificationSettings({ [item.key]: checked })
                           }
                         />
                       </div>
                     ))}
                   </div>
 
-                  <Button onClick={handleNotificationsSave} className="w-full md:w-auto">
+                  <Button onClick={handleNotificationsSave} disabled={settingsLoading} className="w-full md:w-auto">
                     <Save className="h-4 w-4 mr-2" />
-                    Guardar Preferências
+                    {settingsLoading ? 'A guardar...' : 'Guardar Preferências'}
                   </Button>
                 </div>
               </div>
@@ -719,9 +698,9 @@ export const SettingsManager: React.FC = () => {
                           <p className="text-xs text-muted-foreground">{item.desc}</p>
                         </div>
                         <Switch
-                          checked={security[item.key as keyof typeof security] as boolean}
+                          checked={settings.securitySettings[item.key as keyof typeof settings.securitySettings] as boolean}
                           onCheckedChange={(checked) => 
-                            setSecurity(prev => ({ ...prev, [item.key]: checked }))
+                            updateSecuritySettings({ [item.key]: checked })
                           }
                         />
                       </div>
@@ -733,8 +712,8 @@ export const SettingsManager: React.FC = () => {
                         <p className="text-xs text-muted-foreground">Minutos de inatividade antes de logout automático</p>
                       </div>
                       <Select 
-                        value={security.sessionTimeout.toString()} 
-                        onValueChange={(value) => setSecurity(prev => ({ ...prev, sessionTimeout: parseInt(value) }))}
+                        value={settings.securitySettings.sessionTimeout.toString()} 
+                        onValueChange={(value) => updateSecuritySettings({ sessionTimeout: parseInt(value) })}
                       >
                         <SelectTrigger className="w-24">
                           <SelectValue />
@@ -749,9 +728,9 @@ export const SettingsManager: React.FC = () => {
                     </div>
                   </div>
 
-                  <Button onClick={handleSecuritySave} className="w-full md:w-auto">
+                  <Button onClick={handleSecuritySave} disabled={settingsLoading} className="w-full md:w-auto">
                     <Save className="h-4 w-4 mr-2" />
-                    Guardar Configurações
+                    {settingsLoading ? 'A guardar...' : 'Guardar Configurações'}
                   </Button>
                 </div>
               </div>

@@ -177,6 +177,101 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// ========== USER SETTINGS CRUD ==========
+app.get('/api/user-settings', async (req, res) => {
+  try {
+    if (!db.pool) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection not available'
+      });
+    }
+
+    const [rows] = await db.pool.execute(`
+      SELECT category, settings 
+      FROM user_settings 
+      WHERE user_id = 1
+    `);
+
+    // Combine all settings into a single object
+    const settings = {
+      appSettings: { currency: 'EUR', dateFormat: 'DD/MM/YYYY', theme: 'system', language: 'pt' },
+      notificationSettings: { budgetAlerts: true, transactionNotifications: false, monthlyReports: true, investmentAlerts: true, goalReminders: true, emailNotifications: true, pushNotifications: false },
+      securitySettings: { twoFactorAuth: false, sessionTimeout: 30, loginAlerts: true, dataEncryption: true }
+    };
+
+    rows.forEach(row => {
+      if (row.category === 'app') {
+        settings.appSettings = { ...settings.appSettings, ...row.settings };
+      } else if (row.category === 'notifications') {
+        settings.notificationSettings = { ...settings.notificationSettings, ...row.settings };
+      } else if (row.category === 'security') {
+        settings.securitySettings = { ...settings.securitySettings, ...row.settings };
+      }
+    });
+
+    res.json({
+      success: true,
+      data: settings
+    });
+  } catch (error) {
+    console.error('Error fetching user settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user settings',
+      error: error.message
+    });
+  }
+});
+
+app.put('/api/user-settings', async (req, res) => {
+  try {
+    if (!db.pool) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection not available'
+      });
+    }
+
+    const { category, settings } = req.body;
+
+    if (!category || !settings) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category and settings are required'
+      });
+    }
+
+    if (!['app', 'notifications', 'security'].includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category. Must be app, notifications, or security'
+      });
+    }
+
+    // Insert or update settings
+    await db.pool.execute(`
+      INSERT INTO user_settings (user_id, category, settings) 
+      VALUES (1, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+        settings = VALUES(settings),
+        updated_at = CURRENT_TIMESTAMP
+    `, [category, JSON.stringify(settings)]);
+
+    res.json({
+      success: true,
+      message: 'Settings updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating user settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user settings',
+      error: error.message
+    });
+  }
+});
+
 // ========== CATEGORIES CRUD ==========
 app.get('/api/categories', async (req, res) => {
   try {
