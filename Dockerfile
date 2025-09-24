@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL deps (including devDependencies) for build
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies (express, cors, dotenv, etc.)
-RUN npm ci --only=production
+RUN npm ci --only=production --legacy-peer-deps
 
 # Install serve globally (for static assets if needed)
 RUN npm install -g serve
