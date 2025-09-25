@@ -8,6 +8,27 @@ export const formatDatePT = (date: string | Date): string => {
   });
 };
 
+// ... keep existing code (formatDatePT function)
+
+export const formatDateWithUserFormat = (date: string | Date): string => {
+  const d = new Date(date);
+  const format = localStorage.getItem('dateFormat') || 'DD/MM/YYYY';
+  
+  if (format === 'MM/DD/YYYY') {
+    return d.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
+    });
+  }
+  
+  return d.toLocaleDateString('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
 export const formatDateTimePT = (date: string | Date): string => {
   const d = new Date(date);
   return d.toLocaleDateString('pt-PT', {
@@ -18,6 +39,8 @@ export const formatDateTimePT = (date: string | Date): string => {
     minute: '2-digit'
   });
 };
+
+// ... keep existing code (remaining functions)
 
 export const formatMonthYearPT = (date: Date): string => {
   return date.toLocaleDateString('pt-PT', {

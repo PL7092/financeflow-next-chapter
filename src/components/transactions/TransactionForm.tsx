@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { X, Plus, Tag } from 'lucide-react';
 import { useFinance } from '../../contexts/FinanceContext';
-import { formatDateForInput } from '../../utils/dateUtils';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import type { Transaction } from '../../contexts/FinanceContext';
 
 interface TransactionFormProps {
@@ -23,6 +23,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSave,
 }) => {
   const { categories, accounts, entities, savingsGoals } = useFinance();
+  const { formatDateForInput } = useDateFormat();
   const [formData, setFormData] = useState({
     type: 'expense' as 'income' | 'expense' | 'transfer',
     amount: '',

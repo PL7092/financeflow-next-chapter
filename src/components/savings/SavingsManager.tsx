@@ -7,6 +7,7 @@ import { Progress } from '../ui/progress';
 import { PlusCircle, Target, TrendingUp, Calendar } from 'lucide-react';
 import { toast } from '../ui/use-toast';
 import { SavingsForm } from './SavingsForm';
+import { useDateFormat } from '../../hooks/useDateFormat';
 
 export const SavingsManager: React.FC = () => {
   const { addSavingsGoal, savingsGoals, deleteSavingsGoal } = useFinance();

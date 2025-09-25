@@ -5,23 +5,21 @@ import { ptBR } from 'date-fns/locale';
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-
-const getUserDateFormat = () => {
-  return localStorage.getItem('dateFormat') || 'DD/MM/YYYY';
-};
-
-const getLocaleForDateFormat = () => {
-  const format = getUserDateFormat();
-  return format === 'MM/DD/YYYY' ? undefined : ptBR;
-};
+import { useSettings } from "@/contexts/SettingsContext";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  const { settings } = useSettings();
+  
+  // Fallback to localStorage if settings are not loaded yet
+  const dateFormat = settings?.appSettings?.dateFormat || localStorage.getItem('dateFormat') || 'DD/MM/YYYY';
+  const locale = dateFormat === 'MM/DD/YYYY' ? undefined : ptBR;
+  
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      locale={getLocaleForDateFormat()}
+      locale={locale}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",

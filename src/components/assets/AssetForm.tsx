@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { toast } from '../ui/use-toast';
-import { formatDateForInput } from '../../utils/dateUtils';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import type { Asset } from '../../contexts/FinanceContext';
 
 interface AssetFormProps {
@@ -28,6 +28,7 @@ interface AssetFormData {
 
 export const AssetForm: React.FC<AssetFormProps> = ({ open, onOpenChange, asset }) => {
   const { addAsset, updateAsset } = useFinance();
+  const { formatDateForInput } = useDateFormat();
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState<AssetFormData>({

@@ -6,7 +6,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useFinance } from '../../contexts/FinanceContext';
 import { toast } from '../ui/use-toast';
-import { formatDateForInput } from '../../utils/dateUtils';
+import { useDateFormat } from '../../hooks/useDateFormat';
 
 interface InvestmentFormProps {
   open: boolean;
@@ -15,6 +15,7 @@ interface InvestmentFormProps {
 
 export const InvestmentForm: React.FC<InvestmentFormProps> = ({ open, onOpenChange }) => {
   const { addInvestment, accounts } = useFinance();
+  const { formatDateForInput } = useDateFormat();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',

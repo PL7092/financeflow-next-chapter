@@ -7,6 +7,7 @@ import { Progress } from '../ui/progress';
 import { Badge } from '../ui/badge';
 import { TrendingUp, TrendingDown, BarChart3, PieChart, Download, Calendar } from 'lucide-react';
 import { toast } from '../ui/use-toast';
+import { useDateFormat } from '../../hooks/useDateFormat';
 
 export const ReportsManager: React.FC = () => {
   const { transactions, investments, accounts, categories } = useFinance();
