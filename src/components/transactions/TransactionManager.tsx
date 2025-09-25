@@ -9,11 +9,14 @@ import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { formatDatePT, getCurrentMonthRange } from '../../utils/dateUtils';
+import { DatePicker } from '../ui/date-picker';
+import { useDateFormat } from '../../hooks/useDateFormat';
 
 export const TransactionManager: React.FC = () => {
   const { transactions, deleteTransaction, addTransaction, updateTransaction, categories, accounts, entities } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
+  const { formatDateForInput } = useDateFormat();
   const [filters, setFilters] = useState({
     search: '',
     type: 'all',
@@ -316,20 +319,18 @@ export const TransactionManager: React.FC = () => {
             {/* Date From */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Data Inicial</label>
-              <Input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+              <DatePicker
+                date={filters.dateFrom ? new Date(filters.dateFrom) : undefined}
+                onSelect={(d) => setFilters(prev => ({ ...prev, dateFrom: d ? formatDateForInput(d) : '' }))}
               />
             </div>
 
             {/* Date To */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Data Final</label>
-              <Input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+              <DatePicker
+                date={filters.dateTo ? new Date(filters.dateTo) : undefined}
+                onSelect={(d) => setFilters(prev => ({ ...prev, dateTo: d ? formatDateForInput(d) : '' }))}
               />
             </div>
 

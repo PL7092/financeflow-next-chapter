@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { useFinance } from '../../contexts/FinanceContext';
 import { toast } from '../ui/use-toast';
+import { DatePicker } from '../ui/date-picker';
 
 interface SavingsFormProps {
   open: boolean;
@@ -108,11 +109,9 @@ export const SavingsForm: React.FC<SavingsFormProps> = ({ open, onOpenChange }) 
 
           <div>
             <Label htmlFor="targetDate">Data Objetivo (opcional)</Label>
-            <Input
-              id="targetDate"
-              type="date"
-              value={formData.targetDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
+            <DatePicker
+              date={formData.targetDate ? new Date(formData.targetDate) : undefined}
+              onSelect={(d) => setFormData(prev => ({ ...prev, targetDate: d ? d.toISOString().split('T')[0] : '' }))}
             />
           </div>
 

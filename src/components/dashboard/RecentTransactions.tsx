@@ -34,7 +34,7 @@ export function RecentTransactions() {
                   <div>
                     <p className="font-medium">{transaction.description || 'Sem descrição'}</p>
                     <p className="text-sm text-muted-foreground">
-                      {transaction.category_name || 'Sem categoria'} • {new Date(transaction.date).toLocaleDateString()}
+                      {transaction.category_name || 'Sem categoria'} • {new Date(transaction.date).toLocaleDateString('pt-PT')}
                     </p>
                   </div>
                 </div>

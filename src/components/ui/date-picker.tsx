@@ -1,6 +1,6 @@
 import * as React from "react"
 import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { pt, enUS } from "date-fns/locale"
 import { CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -29,7 +29,7 @@ export function DatePicker({
   disabled = false
 }: DatePickerProps) {
   const { settings } = useSettings()
-  const locale = settings.appSettings.dateFormat === 'MM/DD/YYYY' ? undefined : ptBR
+  const locale = settings.appSettings.dateFormat === 'MM/DD/YYYY' ? enUS : pt
   const formatPattern = settings.appSettings.dateFormat === 'MM/DD/YYYY' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'
 
   return (

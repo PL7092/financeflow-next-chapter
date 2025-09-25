@@ -9,6 +9,7 @@ import { Textarea } from '../ui/textarea';
 import { toast } from '../ui/use-toast';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import type { Asset } from '../../contexts/FinanceContext';
+import { DatePicker } from '../ui/date-picker';
 
 interface AssetFormProps {
   open: boolean;
@@ -178,11 +179,9 @@ export const AssetForm: React.FC<AssetFormProps> = ({ open, onOpenChange, asset 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="purchaseDate">Data de Compra</Label>
-              <Input
-                id="purchaseDate"
-                type="date"
-                value={formData.purchaseDate}
-                onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+              <DatePicker
+                date={formData.purchaseDate ? new Date(formData.purchaseDate) : undefined}
+                onSelect={(d) => setFormData({ ...formData, purchaseDate: d ? formatDateForInput(d) : '' })}
               />
             </div>
             <div className="space-y-2">

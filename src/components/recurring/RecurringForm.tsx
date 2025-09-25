@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useFinance } from '../../contexts/FinanceContext';
 import { toast } from '../ui/use-toast';
 import { useDateFormat } from '../../hooks/useDateFormat';
+import { DatePicker } from '../ui/date-picker';
 
 interface RecurringFormProps {
   open: boolean;
@@ -165,21 +166,16 @@ export const RecurringForm: React.FC<RecurringFormProps> = ({ open, onOpenChange
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="startDate">Data de Início</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value, nextOccurrence: e.target.value }))}
-                required
+              <DatePicker
+                date={formData.startDate ? new Date(formData.startDate) : undefined}
+                onSelect={(d) => setFormData(prev => ({ ...prev, startDate: d ? formatDateForInput(d) : '', nextOccurrence: d ? formatDateForInput(d) : '' }))}
               />
             </div>
             <div>
               <Label htmlFor="endDate">Data de Fim (opcional)</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+              <DatePicker
+                date={formData.endDate ? new Date(formData.endDate) : undefined}
+                onSelect={(d) => setFormData(prev => ({ ...prev, endDate: d ? formatDateForInput(d) : '' }))}
               />
             </div>
           </div>

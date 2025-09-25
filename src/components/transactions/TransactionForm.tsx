@@ -7,6 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { X, Plus, Tag } from 'lucide-react';
+import { DatePicker } from '../ui/date-picker';
 import { useFinance } from '../../contexts/FinanceContext';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import type { Transaction } from '../../contexts/FinanceContext';
@@ -303,11 +304,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             {/* Data */}
             <div className="space-y-2">
               <Label htmlFor="date">Data</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleInputChange('date', e.target.value)}
+              <DatePicker
+                date={formData.date ? new Date(formData.date) : undefined}
+                onSelect={(d) => handleInputChange('date', d ? formatDateForInput(d) : '')}
               />
             </div>
 

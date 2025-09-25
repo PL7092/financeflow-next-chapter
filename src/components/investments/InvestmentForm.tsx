@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useFinance } from '../../contexts/FinanceContext';
 import { toast } from '../ui/use-toast';
 import { useDateFormat } from '../../hooks/useDateFormat';
+import { DatePicker } from '../ui/date-picker';
 
 interface InvestmentFormProps {
   open: boolean;
@@ -154,11 +155,9 @@ export const InvestmentForm: React.FC<InvestmentFormProps> = ({ open, onOpenChan
 
           <div>
             <Label htmlFor="purchaseDate">Data de Compra</Label>
-            <Input
-              id="purchaseDate"
-              type="date"
-              value={formData.purchaseDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
+            <DatePicker
+              date={formData.purchaseDate ? new Date(formData.purchaseDate) : undefined}
+              onSelect={(d) => setFormData(prev => ({ ...prev, purchaseDate: d ? formatDateForInput(d) : '' }))}
             />
           </div>
 

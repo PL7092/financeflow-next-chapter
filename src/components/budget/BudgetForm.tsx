@@ -8,6 +8,7 @@ import { CalendarIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useFinance } from '../../contexts/FinanceContext';
 import type { Budget } from '../../contexts/FinanceContext';
+import { DatePicker } from '../ui/date-picker';
 
 interface BudgetFormProps {
   budget?: Budget;
@@ -189,23 +190,17 @@ export function BudgetForm({ budget, onClose }: BudgetFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Data de Início *</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                required
+              <DatePicker
+                date={formData.startDate ? new Date(formData.startDate) : undefined}
+                onSelect={(d) => setFormData(prev => ({ ...prev, startDate: d ? d.toISOString().split('T')[0] : '' }))}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="endDate">Data de Fim *</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                required
+              <DatePicker
+                date={formData.endDate ? new Date(formData.endDate) : undefined}
+                onSelect={(d) => setFormData(prev => ({ ...prev, endDate: d ? d.toISOString().split('T')[0] : '' }))}
               />
             </div>
           </div>
