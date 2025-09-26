@@ -44,7 +44,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         nav_button_next: "absolute right-1",
         table: "w-full border-collapse table-fixed",
         head_row: "mb-1",
-        head_cell: "text-muted-foreground text-center text-[11px] font-medium",
+        head_cell: "p-0 h-8 text-muted-foreground text-center text-[11px] font-medium",
         row: "",
         cell: "text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
         day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal aria-selected:opacity-100 text-xs"),
