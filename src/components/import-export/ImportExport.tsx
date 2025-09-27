@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Alert, AlertDescription } from '../ui/alert';
 import { useToast } from '../ui/use-toast';
-import { Upload, Download, FileText, AlertCircle } from 'lucide-react';
+import { Upload, Download, FileText, AlertCircle, Sparkles } from 'lucide-react';
 import { TransactionImportWizard } from './TransactionImportWizard';
 
 interface ImportResult {
@@ -350,20 +350,36 @@ export const ImportExport: React.FC = () => {
         </TabsList>
 
         <TabsContent value="smart-import" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="bg-gradient-card shadow-card">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Smart Import de Transações
+                Smart Import
               </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Use o assistente inteligente para importar e categorizar automaticamente suas transações.
+              <p className="text-sm text-muted-foreground">
+                Importação inteligente com IA ativa e pronta para uso
               </p>
-              <Button onClick={() => setShowWizard(true)}>
-                Iniciar Smart Import
-              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700 font-medium">
+                    ✅ Smart Import Disponível
+                  </p>
+                  <p className="text-sm text-green-600 mt-1">
+                    Categorização automática e detecção de duplicatas ativas
+                  </p>
+                </div>
+                
+                <Button 
+                  onClick={() => setShowWizard(true)}
+                  className="w-full"
+                  size="sm"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Iniciar Smart Import
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

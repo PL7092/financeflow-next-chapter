@@ -823,7 +823,228 @@ app.delete('/api/savings-goals/:id', async (req, res) => {
   }
 });
 
-// Serve React app for all other routes
+// ========== ENTITIES CRUD ==========
+app.get('/api/entities', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const entities = await db.executeQuery(`
+      SELECT * FROM entities
+      WHERE user_id = ?
+      ORDER BY name ASC
+    `, [1]);
+    res.json({ success: true, data: entities });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/entities', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { name, type } = req.body;
+    const result = await db.executeQuery(
+      'INSERT INTO entities (name, type, user_id) VALUES (?, ?, ?)',
+      [name, type || 'vendor', 1]
+    );
+    const entity = await db.executeQuery('SELECT * FROM entities WHERE id = ?', [result.insertId]);
+    res.json({ success: true, data: entity[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/entities/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    const { name, type, is_active } = req.body;
+    await db.executeQuery(
+      'UPDATE entities SET name = ?, type = ?, is_active = ? WHERE id = ? AND user_id = ?',
+      [name, type, is_active, id, 1]
+    );
+    const entity = await db.executeQuery('SELECT * FROM entities WHERE id = ?', [id]);
+    res.json({ success: true, data: entity[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/entities/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    await db.executeQuery('DELETE FROM entities WHERE id = ? AND user_id = ?', [id, 1]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== AI RULES CRUD ==========
+app.get('/api/ai-rules', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const aiRules = await db.executeQuery(`
+      SELECT * FROM ai_rules
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `, [1]);
+    res.json({ success: true, data: aiRules });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/ai-rules', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { name, description, conditions, actions } = req.body;
+    const result = await db.executeQuery(
+      'INSERT INTO ai_rules (name, description, conditions, actions, user_id) VALUES (?, ?, ?, ?, ?)',
+      [name, description, JSON.stringify(conditions), JSON.stringify(actions), 1]
+    );
+    const aiRule = await db.executeQuery('SELECT * FROM ai_rules WHERE id = ?', [result.insertId]);
+    res.json({ success: true, data: aiRule[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/ai-rules/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    const { name, description, conditions, actions, is_active } = req.body;
+    await db.executeQuery(
+      'UPDATE ai_rules SET name = ?, description = ?, conditions = ?, actions = ?, is_active = ? WHERE id = ? AND user_id = ?',
+      [name, description, JSON.stringify(conditions), JSON.stringify(actions), is_active, id, 1]
+    );
+    const aiRule = await db.executeQuery('SELECT * FROM ai_rules WHERE id = ?', [id]);
+    res.json({ success: true, data: aiRule[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/ai-rules/:id', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    const { id } = req.params;
+    await db.executeQuery('DELETE FROM ai_rules WHERE id = ? AND user_id = ?', [id, 1]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== SAMPLE DATA INITIALIZATION ==========
+app.post('/api/init-sample-data', async (req, res) => {
+  try {
+    if (!db.pool) await db.createConnection();
+    
+    // Check if data already exists
+    const existingTransactions = await db.executeQuery('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?', [1]);
+    if (existingTransactions[0].count > 0) {
+      return res.json({ success: true, message: 'Sample data already exists' });
+    }
+
+    // Sample categories
+    const categories = [
+      { name: 'Alimentação', type: 'expense', color: '#ef4444', icon: 'utensils' },
+      { name: 'Transporte', type: 'expense', color: '#f97316', icon: 'car' },
+      { name: 'Saúde', type: 'expense', color: '#22c55e', icon: 'heart' },
+      { name: 'Entretenimento', type: 'expense', color: '#8b5cf6', icon: 'gamepad2' },
+      { name: 'Salário', type: 'income', color: '#10b981', icon: 'banknote' },
+      { name: 'Freelance', type: 'income', color: '#06b6d4', icon: 'laptop' }
+    ];
+
+    const categoryIds = [];
+    for (const cat of categories) {
+      const result = await db.executeQuery(
+        'INSERT INTO categories (name, type, color, icon, user_id) VALUES (?, ?, ?, ?, ?)',
+        [cat.name, cat.type, cat.color, cat.icon, 1]
+      );
+      categoryIds.push(result.insertId);
+    }
+
+    // Sample accounts
+    const accounts = [
+      { name: 'Conta Corrente', type: 'checking', balance: 2500.00, currency: 'EUR' },
+      { name: 'Poupança', type: 'savings', balance: 15000.00, currency: 'EUR' },
+      { name: 'Cartão de Crédito', type: 'credit', balance: -850.00, currency: 'EUR' }
+    ];
+
+    const accountIds = [];
+    for (const acc of accounts) {
+      const result = await db.executeQuery(
+        'INSERT INTO accounts (name, type, balance, currency, user_id) VALUES (?, ?, ?, ?, ?)',
+        [acc.name, acc.type, acc.balance, acc.currency, 1]
+      );
+      accountIds.push(result.insertId);
+    }
+
+    // Sample transactions (last 30 days)
+    const transactions = [
+      { amount: 2800.00, description: 'Salário mensal', type: 'income', category_idx: 4, days_ago: 1 },
+      { amount: -45.50, description: 'Supermercado', type: 'expense', category_idx: 0, days_ago: 2 },
+      { amount: -12.00, description: 'Metro', type: 'expense', category_idx: 1, days_ago: 3 },
+      { amount: -85.00, description: 'Jantar restaurante', type: 'expense', category_idx: 3, days_ago: 5 },
+      { amount: -35.00, description: 'Farmácia', type: 'expense', category_idx: 2, days_ago: 7 },
+      { amount: 450.00, description: 'Projeto freelance', type: 'income', category_idx: 5, days_ago: 10 },
+      { amount: -120.00, description: 'Compras supermercado', type: 'expense', category_idx: 0, days_ago: 12 },
+      { amount: -25.00, description: 'Cinema', type: 'expense', category_idx: 3, days_ago: 15 },
+      { amount: -60.00, description: 'Combustível', type: 'expense', category_idx: 1, days_ago: 18 },
+      { amount: -18.50, description: 'Lanche', type: 'expense', category_idx: 0, days_ago: 20 }
+    ];
+
+    for (const trans of transactions) {
+      const date = new Date();
+      date.setDate(date.getDate() - trans.days_ago);
+      await db.executeQuery(
+        'INSERT INTO transactions (amount, description, type, category_id, account_id, date, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [Math.abs(trans.amount), trans.description, trans.type, categoryIds[trans.category_idx], accountIds[0], date.toISOString().split('T')[0], 1]
+      );
+    }
+
+    // Sample budget
+    await db.executeQuery(
+      'INSERT INTO budgets (name, amount, category_id, period, start_date, end_date, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Orçamento Alimentação', 400.00, categoryIds[0], 'monthly', new Date().toISOString().split('T')[0], 
+       new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0], 1]
+    );
+
+    // Sample investment
+    await db.executeQuery(
+      'INSERT INTO investments (name, symbol, type, quantity, purchase_price, current_price, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Apple Inc.', 'AAPL', 'stock', 10, 150.00, 175.00, 1]
+    );
+
+    // Sample savings goal
+    const targetDate = new Date();
+    targetDate.setFullYear(targetDate.getFullYear() + 1);
+    await db.executeQuery(
+      'INSERT INTO savings_goals (name, target_amount, current_amount, target_date, description, priority, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['Férias de Verão', 3000.00, 1200.00, targetDate.toISOString().split('T')[0], 'Viagem para a Grécia', 'high', 1]
+    );
+
+    res.json({ success: true, message: 'Sample data initialized successfully' });
+  } catch (error) {
+    console.error('Error initializing sample data:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API 404 handler - must come before the catch-all route
+app.use('/api/*', (req, res) => {
+  console.error('API endpoint not found:', req.path);
+  res.status(404).json({ 
+    success: false, 
+    error: 'API endpoint not found',
+    path: req.path 
+  });
+});
+
+// Serve React app for all non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../dist/index.html'));
 });
@@ -867,8 +1088,21 @@ const initializeWithRetry = async (retries = 10, delay = 5000) => {
           [1, 'demo@local', 'Demo User', 'demo']
         );
         console.log('✅ Default demo user ensured (id=1)');
+        
+        // Initialize sample data if database is empty
+        const existingData = await db.executeQuery('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?', [1]);
+        if (existingData[0].count === 0) {
+          console.log('🔄 Initializing sample data...');
+          const response = await fetch(`http://localhost:${PORT}/api/init-sample-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (response.ok) {
+            console.log('✅ Sample data initialized');
+          }
+        }
       } catch (seedErr) {
-        console.warn('⚠️ Could not ensure default user:', seedErr.message);
+        console.warn('⚠️ Could not ensure default user or sample data:', seedErr.message);
       }
       
       return true;

@@ -426,10 +426,34 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
     try {
       const response = await apiCall('/entities');
       if (response.success) {
-        setEntities(response.data);
+        setEntities(response.data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          isActive: row.is_active
+        })));
       }
     } catch (error) {
       console.error('Error loading entities:', error);
+    }
+  };
+
+  const loadAIRules = async () => {
+    try {
+      const response = await apiCall('/ai-rules');
+      if (response.success) {
+        setAIRules(response.data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          conditions: JSON.parse(row.conditions || '[]'),
+          actions: JSON.parse(row.actions || '[]'),
+          isActive: row.is_active,
+          created_at: row.created_at
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading AI rules:', error);
     }
   };
 
@@ -1121,6 +1145,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({ children }) =>
         loadAssets(),
         loadSavingsGoals(),
         loadEntities(),
+        loadAIRules(),
       ]);
       console.log('✅ Data refreshed from MariaDB successfully');
     } catch (error) {
