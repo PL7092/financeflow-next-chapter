@@ -837,33 +837,60 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Initialize database connection with retries
+const initializeWithRetry = async (retries = 10, delay = 5000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`🔄 Attempting database connection (attempt ${i + 1}/${retries})`);
+      
+      await db.createConnection({
+        host: process.env.DB_HOST || 'mariadb',
+        port: parseInt(process.env.DB_PORT) || 3306,
+        username: process.env.DB_USER || 'finance_user',
+        password: process.env.DB_PASSWORD || 'finance_user_password_2024',
+        database: process.env.DB_NAME || 'personal_finance',
+        useSSL: process.env.DB_SSL === 'true'
+      });
+      
+      // Test the connection
+      const testResult = await db.executeQuery('SELECT 1 as test');
+      console.log('✅ Database connection successful:', testResult);
+      
+      // Initialize schema
+      await db.initializeSchema();
+      console.log('✅ Database schema initialized');
+      
+      // Ensure default user (id=1) exists to satisfy FK references
+      try {
+        await db.executeQuery(
+          'INSERT IGNORE INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)',
+          [1, 'demo@local', 'Demo User', 'demo']
+        );
+        console.log('✅ Default demo user ensured (id=1)');
+      } catch (seedErr) {
+        console.warn('⚠️ Could not ensure default user:', seedErr.message);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`❌ Database connection attempt ${i + 1} failed:`, error.message);
+      if (i < retries - 1) {
+        console.log(`⏳ Waiting ${delay/1000}s before next attempt...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw new Error('Failed to connect to database after all retries');
+};
+
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Personal Finance Manager running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Database: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
   
-  // Initialize database connection on startup
   try {
-    await db.createConnection({
-      host: process.env.DB_HOST === 'mariadb' ? 'localhost' : process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      username: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      useSSL: process.env.DB_SSL === 'true'
-    });
-    console.log('✅ Database connection pool initialized');
-
-    // Ensure default user (id=1) exists to satisfy FK references
-    try {
-      await db.executeQuery(
-        'INSERT IGNORE INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)',
-        [1, 'demo@local', 'Demo User', 'demo']
-      );
-      console.log('✅ Default demo user ensured (id=1)');
-    } catch (seedErr) {
-      console.warn('⚠️ Could not ensure default user:', seedErr.message);
-    }
+    await initializeWithRetry();
+    console.log('✅ Server fully initialized with database');
   } catch (error) {
     console.error('❌ Failed to initialize database connection:', error.message);
   }

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { 
   Plus, 
   ArrowUpRight, 
@@ -50,6 +51,33 @@ const quickActions = [
 ];
 
 export function QuickActions() {
+  const navigate = useNavigate();
+
+  const handleActionClick = (actionTitle: string) => {
+    switch (actionTitle) {
+      case "Nova Transação":
+        navigate("/transactions");
+        break;
+      case "Transferência":
+        navigate("/accounts");
+        break;
+      case "Definir Orçamento":
+        navigate("/budgets");
+        break;
+      case "Investir":
+        navigate("/investments");
+        break;
+      case "Relatório":
+        navigate("/reports");
+        break;
+      case "Conselho IA":
+        navigate("/ai-advisor");
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <Card className="bg-gradient-card shadow-card">
       <CardHeader className="pb-4">
@@ -64,6 +92,7 @@ export function QuickActions() {
                 key={action.title}
                 variant="outline"
                 className="h-auto p-4 flex-col items-start gap-2 hover:shadow-card transition-all duration-300"
+                onClick={() => handleActionClick(action.title)}
               >
                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${action.color} shadow-sm`}>
                   <Icon className="h-4 w-4 text-white" />

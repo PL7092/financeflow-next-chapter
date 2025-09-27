@@ -4,6 +4,7 @@ import { BudgetOverview } from "@/components/dashboard/BudgetOverview";
 import { InvestmentSummary } from "@/components/dashboard/InvestmentSummary";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { BackendStatus } from "@/components/debug/BackendStatus";
+import { ConnectionStatus } from "@/components/debug/ConnectionStatus";
 import { Button } from "@/components/ui/button";
 import { 
   Wallet, 
@@ -111,13 +112,16 @@ const Index = () => {
           </section>
         </div>
         
-        {/* Right Column - 2 sections */}
+        {/* Right Column - 3 sections */}
         <div className="space-y-6">
           <section id="acoes-rapidas">
             <QuickActions />
           </section>
           <section id="orcamentos">
             <BudgetOverview />
+          </section>
+          <section id="status-conexao">
+            <ConnectionStatus />
           </section>
         </div>
       </div>
